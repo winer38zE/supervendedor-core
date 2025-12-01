@@ -6,4 +6,6 @@ streamlit
 pandas
 plotly
 pydantic
-python-dotenv 
+pydantic-settings
+python-dotenv
+requests

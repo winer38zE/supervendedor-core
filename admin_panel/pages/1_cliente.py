@@ -23,4 +23,3 @@ if datos:
     st.dataframe(datos, use_container_width=True)
 else:
     st.info("No hay clientes registrados aún.")
-    
