@@ -1,3 +1,7 @@
+import sys
+import os
+# Truco para ver la carpeta madre desde el sub-sótano
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 import streamlit as st
 from app.database import supabase
 
