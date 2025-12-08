@@ -1,7 +1,8 @@
 # Dentro de app/routers/whatsapp_handler.py
 
 from fastapi import APIRouter
-from ..orchestrator import ZeusOrchestrator # <--- ¡SOLUCIÓN!
+# En app/routers/whatsapp_handler.py
+from app.orchestrator import ZeusOrchestrator  # <--- Esta es la forma segura
 
 router = APIRouter()
 # Instancia global (Zeus cobra vida)
