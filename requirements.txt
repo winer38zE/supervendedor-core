@@ -9,3 +9,5 @@ pydantic
 pydantic-settings
 python-dotenv
 requests
+google-cloud-aiplatform
+reportlab
