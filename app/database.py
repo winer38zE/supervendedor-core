@@ -1,21 +1,36 @@
-from supabase import create_client
-from .config import settings
+# app/database.py
+import os
+from supabase import create_client, Client
 
-# Conexión Segura usando las claves de config.py
-supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+class SupabaseDB:
+    def __init__(self):
+        url = os.environ.get("SUPABASE_URL")
+        key = os.environ.get("SUPABASE_KEY")
+        if not url or not key:
+            print("⚠️ ERROR: Faltan credenciales de Supabase")
+            self.client = None
+        else:
+            self.client = create_client(url, key)
 
-def guardar_venta(cliente, monto, producto, estado, origen):
-    """Guarda la venta en la nube de Supabase"""
-    data = {
-        "cliente": cliente,
-        "monto": monto,
-        "producto": producto,
-        "estado": estado,
-        "origen": origen
-    }
-    # Intentar escribir en la tabla 'ventas'
-    try:
-        supabase.table("ventas").insert(data).execute()
-        print(f"✅ Venta guardada: {cliente}")
-    except Exception as e:
-        print(f"❌ Error guardando venta: {e}")
+    def get_or_create_lead(self, phone: str):
+        if not self.client: return {"id": "no-db", "phone": phone}
+        try:
+            res = self.client.table("leads").select("*").eq("phone", phone).execute()
+            if res.data: return res.data[0]
+            new_lead = {"phone": phone}
+            res = self.client.table("leads").insert(new_lead).execute()
+            return res.data[0]
+        except: return {"id": "error", "phone": phone}
+
+    def save_message(self, lead_id: str, role: str, content: str):
+        if not self.client or lead_id in ["no-db", "error"]: return
+        try:
+            self.client.table("messages").insert({"lead_id": lead_id, "role": role, "content": content}).execute()
+        except Exception as e: print(f"Error DB: {e}")
+
+    def get_chat_history(self, lead_id: str, limit=5):
+        if not self.client or lead_id in ["no-db", "error"]: return []
+        try:
+            res = self.client.table("messages").select("role, content").eq("lead_id", lead_id).order("created_at", desc=True).limit(limit).execute()
+            return res.data[::-1]
+        except: return []

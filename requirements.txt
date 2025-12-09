@@ -10,3 +10,4 @@ pydantic-settings
 python-dotenv
 requests
 google-generativeai
+supabase
