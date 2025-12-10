@@ -1,20 +1,22 @@
+# app/main.py
 from fastapi import FastAPI
-from .routers import vapi_handler, whatsapp_handler
+import uvicorn
+import os
 
-app = FastAPI(
-    title="Super Vendedor IA - Backend",
-    version="1.0"
-)
+# Importamos SOLO los handlers que vamos a usar
+from app.routers import gupshup_handler
+from app.routers import vapi_handler
 
-# --- CONEXIÓN DE CABLES (ROUTERS) ---
-# Aquí le decimos al cerebro que active el oído (Vapi) y el ojo (WhatsApp)
+app = FastAPI()
+
+# Activamos las rutas
+app.include_router(gupshup_handler.router)
 app.include_router(vapi_handler.router)
-app.include_router(whatsapp_handler.router)
 
 @app.get("/")
-def root():
-    return {
-        "sistema": "ED NET PRO AI",
-        "estado": "OPERATIVO 🟢",
-        "ubicacion": "Nube Railway"
-    }
+def read_root():
+    return {"status": "🚀 EL OLIMPO ESTÁ ACTIVO (Gupshup + Vapi)"}
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run(app, host="0.0.0.0", port=port)
