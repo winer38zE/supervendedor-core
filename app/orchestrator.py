@@ -3,6 +3,28 @@ import os
 import google.generativeai as genai
 from .database import SupabaseDB  # <--- AHORA SÍ FUNCIONARÁ PORQUE CREASTE LA DB
 
+# --- ZONA DE CAMBIO RÁPIDO (CONFIGURACIÓN DEL VENDEDOR) ---
+# Edita esto antes de cada reunión con un cliente nuevo.
+
+NOMBRE_EMPRESA = "Joyería El Diamante"
+PRODUCTO_PRINCIPAL = "Pulseras de Hilo Rojo y Oro Laminado"
+PRECIO = "80.000 COP"
+OFERTA = "Si llevas 2, el envío es gratis."
+TONO = "Sofisticado, usa emojis de diamantes 💎 y habla de energía positiva."
+
+# -----------------------------------------------------------
+
+# ... variables de arriba ...
+
+# Asegúrate de que esta parte exista y tenga la 'f' antes de las comillas
+SYSTEM_PROMPT = f"""
+Actúa como el vendedor experto de {NOMBRE_EMPRESA}.
+Vendes {PRODUCTO_PRINCIPAL} a un precio de {PRECIO}.
+Tu oferta especial es: {OFERTA}.
+Usa este tono: {TONO}.
+"""
+
+
 class ZeusOrchestrator:
     def __init__(self):
         # 1. Autenticación GRATIS (Gemini Key)
