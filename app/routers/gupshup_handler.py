@@ -73,3 +73,19 @@ def send_message(phone, text):
 async def verify_webhook():
     """Gupshup usa esto para verificar que existimos"""
     return {"status": "Zeus está escuchando"}
+# --- SIMULADOR DE PRUEBAS (Para probar sin celular) ---
+@router.get("/test/simular")
+async def simulate_chat(background_tasks: BackgroundTasks):
+    """
+    Esto engaña al sistema haciéndole creer que llegó un mensaje.
+    Úsalo para probar si Zeus piensa y responde.
+    """
+    phone_falso = "573001234567" # Un número inventado
+    mensaje_prueba = "Hola Zeus, ¿vendes sábanas?"
+    
+    print(f"🧪 INICIANDO SIMULACRO: {mensaje_prueba}")
+    
+    # Le decimos a Zeus que procese este mensaje falso
+    background_tasks.add_task(process_and_reply, phone_falso, mensaje_prueba)
+    
+    return {"status": "Simulacro enviado. ¡Corre a ver los Logs en Railway!"}
