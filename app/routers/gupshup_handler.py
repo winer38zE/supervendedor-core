@@ -62,3 +62,4 @@ def enviar_mensaje_blindado(cliente, texto):
         print(f"📬 RESULTADO FINAL: {r.status_code} - {r.text}")
     except Exception as e:
         print(f"💀 ERROR CONEXIÓN: {e}")
+        # Cambio forzado para Railway
