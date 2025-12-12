@@ -1,13 +1,20 @@
 # app/routers/gupshup_handler.py
-# --- CODIGO NUCLEAR DE DIAGNOSTICO ---
 from fastapi import APIRouter, Request, BackgroundTasks
 import requests
 import json
 
 router = APIRouter()
 
-# 🛑 PEGA TU API KEY AQUÍ ENTRE LAS COMILLAS 🛑
-API_KEY_SEGURA = "sk_9155b7e4fc11480481b7f7cee0fbe845" 
+# --- 📝 TUS DATOS FIJOS (Edita solo la clave) ---
+# 1. EL NOMBRE (Documento 1)
+NOMBRE_APP = "EDNETBOTIA" 
+
+# 2. EL NÚMERO (Documento 2)
+NUMERO_TEL = "573169060209"
+
+# 3. LA CLAVE (Bórrala y pega la tuya del 15 de Noviembre)
+API_KEY = "sk_9155b7e4fc11480481b7f7cee0fbe845"
+# ------------------------------------------------
 
 @router.get("/gupshup/webhook")
 async def verify():
@@ -16,62 +23,44 @@ async def verify():
 @router.post("/gupshup/webhook")
 async def webhook(request: Request, background_tasks: BackgroundTasks):
     try:
-        # 1. Capturar el cuerpo crudo (RAW)
-        body = await request.body()
-        data = json.loads(body)
-        print(f"📥 [ENTRADA] GUPSHUP DIJO: {json.dumps(data)}")
-
-        # 2. Desglosar datos (sin miedo a errores)
-        if data.get('type') == 'message':
-            payload = data.get('payload', {})
-            
-            # DATOS DEL CLIENTE
-            telefono_cliente = payload.get('source')
-            texto_cliente = payload.get('payload', {}).get('text')
-            
-            # DATOS DEL BOT (CRÍTICO: Leemos a quién iba dirigido el mensaje)
-            # Gupshup nos dice a qué numero escribieron. Usamos ese mismo para responder.
-            telefono_bot = payload.get('destination') 
-            
-            print(f"🕵️ DETECTADO: Cliente {telefono_cliente} escribió a Bot {telefono_bot}")
-
-            if texto_cliente:
-                # Responder inmediatamente
-                background_tasks.add_task(responder_a_la_fuerza, telefono_cliente, telefono_bot, texto_cliente)
+        data = await request.json()
+        print(f"📥 LLEGÓ: {json.dumps(data)}") 
         
-        else:
-            print(f"⚠️ Evento ignorado (No es mensaje de texto): {data.get('type')}")
+        payload = data.get('payload', {})
+        sender = payload.get('source')
+        text = payload.get('payload', {}).get('text')
+
+        if sender:
+            # Responde confirmando que funcionó
+            mensaje = f"✅ ¡IDENTIDAD CONFIRMADA! Soy {NOMBRE_APP} en el número {NUMERO_TEL}"
+            background_tasks.add_task(enviar_mensaje_fijo, sender, mensaje)
 
     except Exception as e:
-        print(f"🔥 ERROR CATASTRÓFICO: {e}")
+        print(f"🔥 ERROR: {e}")
+    
+    return {"status": "ok"}
 
-    return {"status": "received"}
-
-def responder_a_la_fuerza(cliente, bot_numero, texto):
+def enviar_mensaje_fijo(cliente, texto):
     url = "https://api.gupshup.io/sm/api/v1/msg"
     
     headers = {
         "Content-Type": "application/x-www-form-urlencoded",
-        "apikey": API_KEY_SEGURA
+        "apikey": API_KEY  # Usa la clave fija de arriba
     }
     
-    mensaje = f"🤖 SOY UN ROBOT TESTARUDO. Recibí: {texto}"
-    
-    # TRUCO MAESTRO: Usamos el mismo número de destino como origen
-    # Y usamos el nombre de app EDNETBOTIA fijo
+    # AQUÍ ESTÁ EL ARREGLO: Entregamos los dos documentos por separado
     data = {
         "channel": "whatsapp",
-        "source": bot_numero,     # Usamos el número que Gupshup nos dio
+        "source": NUMERO_TEL,     # Aquí va el 57316...
         "destination": cliente,
-        "message": json.dumps({"type": "text", "text": mensaje}),
-        "src.name": "EDNETBOTIA"  # Tu nombre de app real
+        "message": json.dumps({"type": "text", "text": texto}),
+        "src.name": NOMBRE_APP    # Aquí va EDNETBOTIA
     }
     
-    print(f"📤 [SALIDA] Intentando responder de {bot_numero} a {cliente}...")
+    print(f"📤 Enviando con: {NUMERO_TEL} y {NOMBRE_APP}")
     
     try:
         r = requests.post(url, headers=headers, data=data)
-        print(f"📬 [RESULTADO] Código: {r.status_code}")
-        print(f"📜 [RESPUESTA GUPSHUP]: {r.text}")
+        print(f"📬 RESULTADO: {r.status_code} - {r.text}")
     except Exception as e:
-        print(f"💀 ERROR DE CONEXIÓN: {e}")
+        print(f"💀 ERROR CONEXION: {e}")
