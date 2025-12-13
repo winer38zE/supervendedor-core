@@ -11,7 +11,7 @@ NOMBRE_APP_FIJO = "EDNETBOTIA"
 NUMERO_FIJO = "573169060209"
 
 # ⚠️ BORRA ESTO Y PEGA TU API KEY DEL 15 NOV AQUÍ ⚠️
-API_KEY_FIJA = "sk_9155b7e4fc11480481b7f7cee0fbe845"
+API_KEY_FIJA = "zgov8ynqbughsixwkmygxbhym9uwybwf"
 # -----------------------------------------------------
 
 @router.get("/gupshup/webhook")
