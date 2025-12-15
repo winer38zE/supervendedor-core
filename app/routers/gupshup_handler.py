@@ -62,4 +62,27 @@ def enviar_mensaje_blindado(cliente, texto):
         print(f"📬 RESULTADO FINAL: {r.status_code} - {r.text}")
     except Exception as e:
         print(f"💀 ERROR CONEXIÓN: {e}")
-        # Cambio forzado para Railway
+        def enviar_mensaje_blindado(cliente, texto):
+    url = "https://api.gupshup.io/sm/api/v1/msg"
+    
+    # DATOS QUEMADOS PARA PROBAR (Úsalos así tal cual)
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "apikey": API_KEY_FIJA  # Tu clave zgov...
+    }
+    
+    data = {
+        "channel": "whatsapp",
+        "source": NOMBRE_APP_FIJO, # Tiene que decir "EDNETBOTIA"
+        "destination": cliente,    # El número del cliente (ej: 57300...)
+        "message": texto,
+        "src.name": "EDNETBOTIA"   # A veces pide esto también
+    }
+
+    print(f"📤 INTENTANDO ENVIAR A: {cliente} DESDE: {NOMBRE_APP_FIJO}")
+    
+    try:
+        response = requests.post(url, headers=headers, data=data)
+        print(f"📬 RESPUESTA GUPSHUP: {response.status_code} - {response.text}")
+    except Exception as e:
+        print(f"💀 ERROR FATAL: {e}")
