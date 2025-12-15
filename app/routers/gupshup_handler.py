@@ -4,11 +4,11 @@ import json
 
 router = APIRouter()
 
-# --- 🔐 DATOS FIJOS (ESTOS SON LOS BUENOS) ---
+# --- 🔐 DATOS FIJOS ---
 NOMBRE_APP_FIJO = "EDNETBOTIA" 
 NUMERO_FIJO = "573169060209"
-API_KEY_FIJA = "zgov8ynqbughsixwkmygxbhym9uwybwf" # Tu clave correcta
-# -----------------------------------------------------
+API_KEY_FIJA = "zgov8ynqbughsixwkmygxbhym9uwybwf" 
+# ----------------------
 
 @router.get("/gupshup/webhook")
 async def verify():
@@ -22,9 +22,9 @@ async def webhook(request: Request, background_tasks: BackgroundTasks):
         
         # Lógica para detectar el número del cliente en Gupshup V2
         payload = data.get('payload', {})
-        sender = payload.get('source') # El número del cliente suele venir aquí
+        sender = payload.get('source') 
         
-        # Si no está en 'source', buscamos en 'sender'
+        # Si no está en 'source', buscamos en 'sender' (para backup)
         if not sender:
             sender = payload.get('sender', {}).get('phone')
 
@@ -61,6 +61,7 @@ def enviar_mensaje_blindado(cliente, texto):
         "destination": cliente,    # El número del cliente
         "message": texto,
         "src.name": NOMBRE_APP_FIJO
+    } # <--- ¡ESTA LLAVE } ERA LA QUE FALTABA!
     
     print(f"📤 INTENTANDO ENVIAR A: {cliente} DESDE: {NOMBRE_APP_FIJO}")
     
