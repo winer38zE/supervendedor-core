@@ -10,7 +10,8 @@ GUPHSUP_API_KEY = "zgov8ynqbughsixwkmygxbhym9uwybwf"
 GUPHSUP_APP_NAME = "EDNETBOTIA" 
 
 # ⚠️ CAMBIO CRÍTICO: URL ACTUALIZADA SEGÚN DOCUMENTACIÓN OFICIAL (/wa/)
-GUPHSUP_URL = "https://api.gupshup.io/wa/api/v1/msg"
+# ⚠️ CAMBIA ESTO EN TU CÓDIGO AHORA MISMO
+GUPHSUP_URL = "https://api.gupshup.io/sm/api/v1/msg"
 
 # --- 🛠️ FUNCIÓN DE ENVÍO ---
 def send_whatsapp_message(destination_number, text_message):
