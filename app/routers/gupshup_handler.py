@@ -1,86 +1,84 @@
-from fastapi import APIRouter, Request, BackgroundTasks
+from fastapi import APIRouter, Request, BackgroundTasks, HTTPException
 import requests
 import json
+import os
 
 router = APIRouter()
 
-# --- 🔐 CONFIGURACIÓN BLINDADA ---
-# Usamos las variables directas para evitar errores de lectura por ahora
-GUPHSUP_API_KEY = "zgov8ynqbughsixwkmygxbhym9uwybwf" # Tu clave real
-GUPHSUP_APP_NAME = "EDNETBOTIA" 
-GUPHSUP_URL = "https://api.gupshup.io/sm/api/v1/msg"
+# --- 🔐 CONFIGURACIÓN SEGURA (usa variables de entorno en Railway) ---
+GUPHSUP_API_KEY = os.getenv("zgov8ynqbughsixwkmygxbhym9uwybwf")  # Pon tu key aquí en Railway Secrets
+GUPHSUP_SOURCE_NUMBER = os.getenv("573169060209")  # Ej: "521234567890" (tu número WhatsApp Business)
+GUPHSUP_APP_NAME = os.getenv("GUPHSUP_APP_NAME", "EDNETBOTIA")  # Nombre de tu app
+GUPHSUP_URL = "https://api.gupshup.io/wa/api/v1/msg"  # Endpoint correcto
 
-# --- 🛠️ FUNCIÓN DE ENVÍO (CORREGIDA A FORM-DATA) ---
-def send_whatsapp_message(destination_number, text_message):
+if not GUPHSUP_API_KEY or not GUPHSUP_SOURCE_NUMBER:
+    raise ValueError("Faltan variables de entorno: GUPHSUP_API_KEY y GUPHSUP_SOURCE_NUMBER")
+
+# --- 🛠️ FUNCIÓN DE ENVÍO CORREGIDA ---
+def send_whatsapp_message(destination_number: str, text_message: str):
     headers = {
         "Content-Type": "application/x-www-form-urlencoded",
         "apikey": GUPHSUP_API_KEY
     }
-
-    # Usamos Form-Data que es más robusto para Gupshup Access API
+    
+    # Mensaje de texto simple (session message)
+    message_payload = json.dumps({"type": "text", "text": text_message})
+    
     payload = {
         "channel": "whatsapp",
-        "source": GUPHSUP_APP_NAME,
-        "destination": destination_number,
-        "message": text_message,
-        "src.name": GUPHSUP_APP_NAME
+        "source": GUPHSUP_SOURCE_NUMBER,      # Número del negocio
+        "destination": destination_number,    # Número del cliente
+        "message": message_payload,           # JSON stringificado
+        "src.name": GUPHSUP_APP_NAME          # Nombre de la app
     }
-
-    print(f"🚀 ENVIANDO RESPUESTA A: {destination_number}")
-
+    
+    print(f"🚀 ENVIANDO A: {destination_number} -> {text_message}")
     try:
         response = requests.post(GUPHSUP_URL, headers=headers, data=payload)
-        print(f"📬 GUPSHUP DICE: {response.status_code} - {response.text}")
+        print(f"📬 GUPSHUP RESPONSE: {response.status_code} - {response.text}")
+        return response.json()
     except Exception as e:
         print(f"💀 ERROR DE ENVÍO: {e}")
 
-# --- 📡 EL WEBHOOK (ADAPTADO A FASTAPI) ---
+# --- 📡 WEBHOOK ---
 @router.get("/gupshup/webhook")
-async def verify():
-    return "OK"
+async def verify(token: str = None, challenge: str = None):
+    # Gupshup puede enviar un token para verificar (opcional)
+    # Si no, solo devuelve OK
+    if challenge:
+        return challenge
+    return {"status": "ok"}
 
 @router.post("/gupshup/webhook")
 async def webhook(request: Request, background_tasks: BackgroundTasks):
-    # 1. RESPUESTA INMEDIATA: Gupshup exige un 200 OK rápido
-    # En FastAPI, al final de la función retornamos el 200, 
-    # pero usamos BackgroundTasks para que el proceso pesado no bloquee.
-    
     try:
         data = await request.json()
-        print(f"📥 DATA RECIBIDA: {json.dumps(data)}")
+        print(f"📥 DATA RECIBIDA: {json.dumps(data, indent=2)}")
         
-        # 2. EXTRACCIÓN DE DATOS (Con seguridad anti-caídas)
-        payload = data.get('payload', {})
-        
-        # Buscamos el número del cliente (source o sender)
-        cliente = payload.get('source')
-        if not cliente:
-            cliente = payload.get('sender', {}).get('phone')
-
-        # Buscamos el mensaje de texto
-        texto = payload.get('body', {}).get('text')
-        tipo = data.get('type')
-
-        # 3. FILTRO DE SEGURIDAD
-        if not cliente:
-            print("⚠️ Webhook sin cliente identificado (Ping de sistema).")
-            return {"status": "ok"} # Salimos sin hacer nada
-
-        if tipo != "msg" and tipo != "message":
-            print(f"ℹ️ Evento ignorado (Tipo: {tipo})")
+        # Estructura típica para mensaje entrante
+        if data.get("type") != "message":
+            print(f"ℹ️ Evento ignorado (tipo: {data.get('type')})")
             return {"status": "ok"}
-
-        # 4. LÓGICA DEL BOT (GEMINI SIMULADO POR AHORA)
-        print(f"✅ MENSAJE DE {cliente}: {texto}")
         
-        # Aquí iría tu llamada a Gemini. Por ahora, respuesta automática de prueba:
-        respuesta_bot = f"🤖 Recibido: {texto}. Soy EDNETBOTIA y estoy vivo."
+        payload = data.get("payload", {})
+        sender_phone = payload.get("source")  # Número del cliente
+        msg_type = payload.get("type")
         
-        # 5. AGENDAR EL ENVÍO (SEGUNDO PLANO)
-        background_tasks.add_task(send_whatsapp_message, cliente, respuesta_bot)
-
+        if not sender_phone or msg_type != "text":
+            print("⚠️ No es un mensaje de texto válido")
+            return {"status": "ok"}
+        
+        texto_recibido = payload.get("payload", {}).get("text", "")
+        print(f"✅ MENSAJE DE {sender_phone}: {texto_recibido}")
+        
+        # --- LÓGICA DEL BOT (aquí pondrás Gemini/Grok más adelante) ---
+        respuesta_bot = f"🤖 Recibí tu mensaje: \"{texto_recibido}\". ¡Soy EDNETBOTIA y estoy aprendiendo a ser más inteligente!"
+        
+        # Enviar respuesta en segundo plano (no bloquea el 200 OK)
+        background_tasks.add_task(send_whatsapp_message, sender_phone, respuesta_bot)
+        
     except Exception as e:
-        print(f"🔥 ERROR EN EL CÓDIGO: {e}")
+        print(f"🔥 ERROR EN WEBHOOK: {e}")
+        raise HTTPException(status_code=400, detail="Invalid payload")
     
-    # Siempre devolvemos OK para que Gupshup no se queje
     return {"status": "ok"}
