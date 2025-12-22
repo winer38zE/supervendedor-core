@@ -9,8 +9,13 @@ from app.routers import vapi_handler
 
 app = FastAPI()
 
-# Activamos las rutas
-app.include_router(gupshup_handler.router)
+# Por esto (agregando el prefijo):
+app.include_router(gupshup_handler.router, prefix="/gupshup")
+# Asegúrate de que vapi_handler.py define un 'router' tipo APIRouter:
+# from fastapi import APIRouter
+# router = APIRouter()
+# ...Rutas aquí...
+# Luego, puedes usar:
 app.include_router(vapi_handler.router)
 
 @app.get("/")

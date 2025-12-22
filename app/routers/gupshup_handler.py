@@ -6,7 +6,8 @@ from ..orchestrator import ZeusOrchestrator
 router = APIRouter()
 orchestrator = ZeusOrchestrator()
 
-@router.post("/")
+# Por esto:
+@router.post("/webhook")
 async def handle_gupshup(request: Request):
     """Recibe mensajes de WhatsApp vía Gupshup"""
     data = await request.json()
