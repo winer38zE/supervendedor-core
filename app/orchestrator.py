@@ -77,6 +77,38 @@ class ZeusOrchestrator:
 
         # C. Guardar respuesta
         if response_text:
+            import os
+            import anthropic
+
+            # Configurar el cliente de Anthropic con la variable de entorno
+            anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
+            if not anthropic_api_key:
+                print("💀 ERROR: Falta la variable de entorno ANTHROPIC_API_KEY")
+                response_text = "Lo siento, hay un error con mi sistema de IA. Intenta más tarde."
+            else:
+                try:
+                    client = anthropic.Anthropic(api_key=anthropic_api_key)
+                    message_history = []
+
+                    # Puedes traer historial real aquí si lo deseas
+
+                    # Claude espera una lista de dicts {role: "user"/"assistant", content: str}
+                    # Pregunta y contexto del sistema
+                    system_content = SYSTEM_PROMPT
+                    message_history.append({"role": "user", "content": user_message})
+
+                    response = client.messages.create(
+                        model="claude-3.5-sonnet-20240620",
+                        max_tokens=320,
+                        system=system_content,
+                        messages=message_history
+                    )
+                    response_text = response.content[0].text
+                except Exception as e:
+                    print(f"🔥 ERROR CEREBRAL AL PENSAR (Anthropic): {e}")
+                    response_text = "¡Hola! Estoy reiniciando mis sistemas. ¿Me repites?"
+
+            # Guarda la respuesta generada por Claude
             self.db.save_message(lead['id'], "assistant", response_text)
             
         return {"type": "text", "content": response_text}
