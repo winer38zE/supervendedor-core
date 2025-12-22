@@ -15,6 +15,17 @@ PRECIO = "80.000 COP"
 OFERTA = "Si llevas 2, el envío es gratis."
 TONO = "Amable, usa emojis 💎 y sé breve."
 
+from fastapi import APIRouter
+
+router = APIRouter()
+
+# Endpoint para procesar mensajes
+@router.post("/olympus/zeus/process")
+def process(user_id: str, user_message: str):
+    orchestrator = ZeusOrchestrator()
+    result = orchestrator.process_message(user_id, user_message, chat_history_unused=[])
+    return result
+
 SYSTEM_PROMPT = f"""
 Eres el vendedor experto de {NOMBRE_EMPRESA}.
 Vendes {PRODUCTO} a {PRECIO}.

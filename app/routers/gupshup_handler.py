@@ -1,77 +1,73 @@
-from fastapi import APIRouter, Request, BackgroundTasks
-import requests
-import json
+import os
+import google.generativeai as genai
+from dotenv import load_dotenv
 
-router = APIRouter()
+load_dotenv() # Carga las variables del archivo .env
 
-# --- 🔐 DATOS DE TU CUENTA ---
-GUPHSUP_API_KEY = "zgov8ynqbughsixwkmygxbhym9uwybwf" 
-GUPHSUP_APP_NAME = "EDNETBOTIA" 
+# --- DATOS DE TU NEGOCIO (ED NET PRO) ---
+NOMBRE_EMPRESA = "ED NET PRO"
+PRODUCTO_1 = "Tarjetas NFC Inteligentes (Tu contacto en un toque)"
+PRODUCTO_2 = "Super Vendedor IA (Automatización de ventas 24/7)"
+from ..database import SupabaseDB  # <--- Fix the import, since database is one folder up
+TONO = "Innovador, tecnológico, directo y persuasivo. Usa emojis 🚀🛡️🏛️."
 
-# ⚠️ CORRECCIÓN FINAL: Usamos la ruta "sm" (Smart Messaging) que es la ÚNICA para QR
-GUPHSUP_URL = "https://api.gupshup.io/sm/api/v1/msg"
+SYSTEM_PROMPT = f"""
+Eres el Arquitecto Jefe de Ventas de {NOMBRE_EMPRESA}.
+Vendes:
+1. {PRODUCTO_1}: Ideales para networking de alto nivel.
+2. {PRODUCTO_2}: Sistemas de IA como yo para escalar negocios.
+Objetivo: Calificar al cliente y cerrar una cita técnica o la venta directa.
+Tono: {TONO}.
+REGLA: Respuestas breves, máximo 60 palabras. Siempre enfócate en el retorno de inversión y la tecnología de punta.
+"""
 
-# --- 🛠️ FUNCIÓN DE ENVÍO (CONFIGURADA PARA QR) ---
-def send_whatsapp_message(destination_number, text_message):
-    headers = {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "apikey": GUPHSUP_API_KEY
-    }
-
-    # En la API de QR (sm), el source DEBE ser el nombre de la app
-    payload = {
-        "channel": "whatsapp",
-        "source": GUPHSUP_APP_NAME,  # Aquí va "EDNETBOTIA"
-        "destination": destination_number,
-        "message": text_message,
-        "src.name": GUPHSUP_APP_NAME
-    }
-
-    print(f"🚀 ENVIANDO A {destination_number} POR RUTA QR (SM)...")
-
-    try:
-        response = requests.post(GUPHSUP_URL, headers=headers, data=payload)
-        print(f"📬 GUPSHUP RESPONDE: {response.status_code} - {response.text}")
-    except Exception as e:
-        print(f"💀 ERROR DE ENVÍO: {e}")
-
-# --- 📡 EL WEBHOOK ---
-@router.get("/gupshup/webhook")
-async def verify():
-    return "OK"
-
-@router.post("/gupshup/webhook")
-async def webhook(request: Request, background_tasks: BackgroundTasks):
-    try:
-        data = await request.json()
-        # print(f"📥 DATA: {json.dumps(data)}") # Descomenta si quieres ver todo el ruido
+class ZeusOrchestrator:
+    def __init__(self):
+        print("🧠 INICIANDO ZEUS PARA ED NET PRO...")
         
-        payload = data.get('payload', {})
-        tipo = data.get('type')
-
-        # Buscar cliente (Soporta ambos formatos de Gupshup)
-        cliente = payload.get('source')
-        if not cliente:
-            cliente = payload.get('sender', {}).get('phone')
-
-        texto = payload.get('body', {}).get('text')
-
-        # Filtros de eventos que no son mensajes
-        if tipo in ["sandbox-start", "sent", "delivered", "read", "failed", "enqueued"]:
-            if tipo == "failed":
-                print(f"❌ ERROR REPORTADO POR GUPSHUP: {json.dumps(payload)}")
-            return {"status": "ok"}
+        # 1. Conectar Cerebro (Usando variable de entorno)
+        api_key = os.getenv("GEMINI_API_KEY") 
+        if not api_key:
+            # Fallback por si aún no creas el .env (No recomendado para producción)
+            api_key = "TU_LLAVE_AQUI" 
             
-        if not cliente or not texto:
-            return {"status": "ok"}
-
-        print(f"✅ MENSAJE RECIBIDO DE {cliente}: {texto}")
+        genai.configure(api_key=api_key)
         
-        # Respuesta Automática
-        respuesta = f"🤖 ¡Hola! Soy {GUPHSUP_APP_NAME}. Recibí tu mensaje: '{texto}'"
-        background_tasks.add_task(send_whatsapp_message, cliente, respuesta)
+        # 2. Conectar Memoria (Supabase)
+        self.db = SupabaseDB()
+        
+        # 3. Configurar Modelo
+        self.model = genai.GenerativeModel(
+            'gemini-1.5-flash',
+            system_instruction=SYSTEM_PROMPT 
+        )
 
-    except Exception as e:
-        print(f"🔥 ERROR: {e}")
-    
-    return {"status": "ok"}
+    def process_message(self, user_id, user_message, chat_history_unused):
+        print(f"🤔 Pensando respuesta para: {user_message}")
+        
+        # A. Obtener o crear Lead y recuperar historial real
+        lead = self.db.get_or_create_lead(user_id)
+        
+        # --- CARGA DE MEMORIA REAL ---
+        # Aquí pedimos los últimos mensajes a Supabase para que Zeus no olvide
+        raw_history = self.db.get_messages(lead['id'], limit=10) 
+        formatted_history = []
+        for msg in raw_history:
+            role = "user" if msg['role'] == "user" else "model"
+            formatted_history.append({"role": role, "parts": [msg['content']]})
+        
+        # B. Generar respuesta con historial
+        try:
+            chat = self.model.start_chat(history=formatted_history)
+            response = chat.send_message(user_message)
+            response_text = response.text
+            
+            # C. Guardar en base de datos
+            self.db.save_message(lead['id'], "user", user_message)
+            self.db.save_message(lead['id'], "assistant", response_text)
+            
+            return {"type": "text", "content": response_text}
+            
+        except Exception as e:
+            print(f"🔥 ERROR CEREBRAL: {e}")
+            return {"type": "text", "content": "Estamos optimizando mis sistemas de IA. ¿En qué puedo ayudarte con tus Tarjetas NFC?"}
