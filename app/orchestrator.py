@@ -1,34 +1,24 @@
+# app/orchestrator.py
 import os
-import anthropic # Asegúrese de instalarlo: pip install anthropic
-from .database import SupabaseDB
-from dotenv import load_dotenv
-
-load_dotenv()
+from groq import Groq # pip install groq
+from .config import settings
 
 class ZeusOrchestrator:
     def __init__(self):
-        print("🧠 INICIANDO ZEUS CON CEREBRO ANTHROPIC...")
-        # Carga la llave de Anthropic configurada en Railway
-        self.client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-        self.db = SupabaseDB()
-
-    def process_message(self, user_id, user_message, chat_history_unused):
-        # 1. Obtener historial de Supabase
-        lead = self.db.get_or_create_lead(user_id)
+        # Usamos Groq por su velocidad extrema
+        self.groq_client = Groq(api_key=settings.GROQ_API_KEY)
         
+    def process_message(self, user_id, user_message, chat_history):
         try:
-            # 2. Llamada a Claude 3.5 Sonnet
-            message = self.client.messages.create(
-                model="claude-3-5-sonnet-20240620",
-                max_tokens=150,
-                system="Eres el Arquitecto de ED NET PRO. Vendes Tarjetas NFC e IA.",
-                messages=[{"role": "user", "content": user_message}]
+            # Llamada rápida a Llama 3 en Groq
+            completion = self.groq_client.chat.completions.create(
+                model="llama3-8b-8192",
+                messages=[
+                    {"role": "system", "content": "Eres el cerrador de ED NET PRO. Sé breve y directo."},
+                    {"role": "user", "content": user_message}
+                ],
+                temperature=0.7,
             )
-            
-            response_text = message.content[0].text
-            self.db.save_message(lead['id'], "assistant", response_text)
-            return {"type": "text", "content": response_text}
-            
+            return {"type": "text", "content": completion.choices[0].message.content}
         except Exception as e:
-            print(f"💀 ERROR ANTHROPIC: {e}")
-            return {"type": "text", "content": "Optimizando sistemas..."}
+            return {"type": "text", "content": "Optimizando... escribe en un momento."}
