@@ -1,0 +1,47 @@
+
+────────────────────────────────────────────────────────────
+📅 LLAMADA: 2026-03-18 23:27:40  |  RESULTADO: Perdida  |  MOTOR: Claude Haiku
+────────────────────────────────────────────────────────────
+## PREGUNTAS SIN RESPUESTA
+- ¿Tienen helado de maracuyá en inventario? (el bot evasionó la pregunta)
+- ¿Cuál es el precio de una copa doble?
+- ¿Realizan entregas a domicilio?
+
+## INFORMACIÓN FALTANTE
+- Catálogo de sabores disponibles (incluyendo maracuyá sí/no)
+- Precios de copas simples y dobles
+- Política de domicilios y costos de envío
+- Dirección y horarios de atención
+
+## SUGERENCIAS DE MEJORA
+- Capacitar al bot para responder directamente preguntas de inventario con un sí/no claro
+- Integrar base de datos de precios actualizados y permitir consultas específicas
+- Programar respuestas sobre servicios de domicilio (sí/no, horarios, áreas de cobertura)
+- Entrenar al bot a NO insistir con recomendaciones cuando el cliente pregunta algo específico
+- Implementar desvío a humano cuando el cliente pide información que el bot no posee
+- Usar frases concretas en lugar de respuestas genéricas ("Puede visitarnos")
+
+## PUNTUACIÓN DE LA LLAMADA
+2/10 - El bot falló en responder las tres preguntas clave del cliente, evadió información específica y generó frustración, resultando en pérdida de venta potencial.
+
+────────────────────────────────────────────────────────────
+📅 LLAMADA: 2026-03-18 23:36:15  |  RESULTADO: Perdida  |  MOTOR: Claude Haiku
+────────────────────────────────────────────────────────────
+## PREGUNTAS SIN RESPUESTA
+- ¿Aceptan pagos con Bitcoin?
+- ¿Abren los domingos a las 3 am?
+
+## INFORMACIÓN FALTANTE
+- Métodos de pago disponibles (especialmente criptomonedas)
+- Horarios de operación por día de la semana
+- Horarios de madrugada o atención nocturna
+
+## SUGERENCIAS DE MEJORA
+- Integrar base de datos actualizada con métodos de pago aceptados
+- Cargar horarios completos de atención (incluyendo domingos y madrugadas)
+- Cuando no se tiene información, ofrecer transferir a un agente humano en lugar de cambiar de tema
+- Evitar hacer recomendaciones de productos si no se resolvieron las preguntas del cliente
+- Entrenar al bot para reconocer frustración y escalar con urgencia
+
+## PUNTUACIÓN DE LA LLAMADA
+2/10 - El bot no respondió ninguna de las dos preguntas específicas del cliente, lo desvió con un producto irrelevante y perdió la venta por falta de información crítica y mala gestión de la conversación.

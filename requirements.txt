@@ -9,6 +9,6 @@ pydantic
 pydantic-settings
 python-dotenv
 requests
+httpx
 google-generativeai
-supabase
 anthropic

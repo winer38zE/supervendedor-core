@@ -1,3 +1,22 @@
 GEMINI_API_KEY=AIzaSyCaXONqjBbKshAE1zUdK5-jLuc5MEz1lD8
-SUPABASE_URL=https://pbuhisckvkyugkujovus.supabase.co 
-SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBidWhpc2Nrdmt5dWdrdWpvdnVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ1MzIwNDEsImV4cCI6MjA4MDEwODA0MX0.hdGLppPIQmzggImyXX1q1rTP7Vn_rXAfcr58-IK9P40 
+SUPABASE_URL=https://zuvscvatsugwdesxnfpe.supabase.co
+SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1dnNjdmF0c3Vnd2Rlc3huZnBlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NzU2NzEwMywiZXhwIjoyMDgzMTQzMTAzfQ.R8yTLSoD6C4e_5AAMOfAh2ka3LGxjM8MKAXUHoy8z3M
+DEFAULT_PASS=ednetpro_2026
+S3_BUCKET=el-nombre-de-tu-bucket
+
+# ── Google Calendar ────────────────────────────────────────────────────────────
+# Pega aquí el JSON completo de tu Service Account (en una sola línea)
+GOOGLE_CREDENTIALS_JSON=
+# O bien el JSON del token OAuth2 si usas esa autenticación
+GOOGLE_TOKEN_JSON=
+# Calendario destino (por defecto el del dueño del negocio)
+GOOGLE_CALENDAR_ID=zeinn05.1983@gmail.com
+# Zona horaria y duración de citas en minutos
+CALENDAR_TIMEZONE=America/Bogota
+CALENDAR_EVENT_DURATION_MIN=60
+# URL pública del servidor (para que Vapi sepa dónde enviar los tool-calls)
+PUBLIC_URL=https://tu-dominio.com
+AWS_REGION=us-east-2
+S3_URL_EXPIRY=600
+AWS_ACCESS_KEY_ID=TU_LLAVE_DE_AWS
+AWS_SECRET_ACCESS_KEY=TU_CLAVE_SECRETA_DE_AWS
