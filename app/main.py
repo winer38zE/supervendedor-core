@@ -1,48 +1,69 @@
-# app/main.py
+# app/main.py — Single Tenant (Edwuar)
 from fastapi import FastAPI
 import uvicorn
 import os
+from pathlib import Path
 
-# 1. Importamos solo los handlers que vamos a utilizar
-# Eliminamos Gupshup por completo
-from app.routers import evolution_handler
 from app.routers import vapi_handler
+from app.routers import hunter_router
+from app.routers import gupshup_handler
+from app.config import settings
 
-# 2. Inicializamos la aplicación primero (Paso crítico)
 app = FastAPI(
-    title="ED NET PRO - Engineering in Sales",
-    description="Súper Vendedor AI con Evolution API y Vapi",
-    version="1.1.0"
+    title="ED NET PRO - Supervendedor",
+    description="Supervendedor AI — Single Tenant | WhatsApp + Vapi + Hunter",
+    version="3.0.0-single",
 )
 
-# 3. Registramos los routers activos
-# Ruta para WhatsApp (Evolution API)
-app.include_router(
-    evolution_handler.router, 
-    prefix="/evolution", 
-    tags=["WhatsApp (Evolution API)"]
+# Voz (Vapi)
+app.include_router(vapi_handler.router, tags=["Voice AI (Vapi)"])
+
+# WhatsApp directo (Evolution API)
+app.include_router(gupshup_handler.router, prefix="/gupshup", tags=["WhatsApp"])
+
+# Prospección Hunter (Google Maps → Supabase)
+app.include_router(hunter_router.router, prefix="/hunter", tags=["Hunter"])
+
+
+# ── Carga de prompts locales (sin S3) ─────────────────────────────────────────
+
+_PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
+_DEFAULT_PROMPT = (
+    "Eres Zeus, el súper vendedor de ED NET PRO. "
+    "Identificas negocios y empresas serias, cualificas su interés y agendas reuniones. "
+    "Eres directo, profesional y cálido. Hablas en español colombiano. "
+    "Tu objetivo: llevar al prospecto desde el primer contacto hasta una cita agendada."
 )
 
-# Ruta para el asistente de voz (Vapi)
-app.include_router(
-    vapi_handler.router, 
-    prefix="/vapi", 
-    tags=["Voice AI (Vapi)"]
-)
 
-# 4. Ruta de control para verificar el estado del servidor
+def get_client_context(client_id: str = "default") -> str:
+    """
+    Carga el system prompt desde archivo local.
+    Busca en: prompts/{client_id}.txt  →  prompts/default.txt  →  prompt integrado.
+    """
+    for name in (client_id, "default"):
+        path = _PROMPTS_DIR / f"{name}.txt"
+        if path.exists():
+            try:
+                return path.read_text(encoding="utf-8").strip()
+            except Exception:
+                pass
+    return _DEFAULT_PROMPT
+
+
+# ── Estado del sistema ────────────────────────────────────────────────────────
+
 @app.get("/")
 def read_root():
     return {
-        "status": "🚀 SISTEMA ED NET PRO EN LÍNEA",
-        "agente": "Súper Vendedor Pro",
-        "motor": "Anthropic Claude 3.5 Sonnet + Groq",
-        "canales_activos": ["WhatsApp (Evolution)", "Voice (Vapi)"],
-        "region": "AWS Cloud"
+        "status":          "SISTEMA ED NET PRO EN LINEA",
+        "modo":            "single-tenant",
+        "owner":           settings.OWNER_ID,
+        "canales_activos": ["WhatsApp (Evolution API)", "Voice (Vapi)"],
+        "embudo":          "Prospecto → Athena → Hermes → Cita",
     }
 
-# 5. Ejecución del servidor
+
 if __name__ == "__main__":
-    # Usamos el puerto 8080 que es el estándar para tus instancias de AWS
-    port = int(os.environ.get("PORT", 8080))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=True)
