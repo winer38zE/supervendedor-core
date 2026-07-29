@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "updated_at": "2026-07-26T03:06:46Z",
+  "total_analizadas": 3,
+  "cerradas": 0,
+  "perdidas": 3,
+  "tasa_conversion": "0%",
+  "preguntas_sin_respuesta": [
+    "Configura ANTHROPIC_API_KEY para análisis automático de preguntas sin respuesta"
+  ],
+  "perfil_comprador_exitoso": {
+    "frases_trigger": [
+      "me interesa",
+      "¿cuándo tienen disponibilidad?"
+    ],
+    "caracteristicas": [
+      "pregunta por precio directamente",
+      "menciona urgencia"
+    ],
+    "momento_de_cierre": "Cuando el agente propone fecha y hora específica"
+  },
+  "motivos_perdida_tiempo": [
+    "Sin intención real de compra",
+    "Sin presupuesto disponible"
+  ],
+  "tecnicas_ganadoras": [
+    "Proponer fecha específica en lugar de preguntar '¿cuándo quieres?'"
+  ],
+  "instrucciones_para_bot": "APRENDIZAJE ACTIVO (v1): Tasa de conversión actual: 0%. Configura ANTHROPIC_API_KEY para recibir instrucciones específicas basadas en el análisis real de tus llamadas."
+}

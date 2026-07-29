@@ -23,7 +23,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, EmailStr
 
-from ..database import get_client
+from ..database.supabase_client import get_client
 from ..services.billing import (
     COSTO_LLAMADA_USD,
     add_credit,

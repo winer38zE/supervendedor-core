@@ -1,8 +1,21 @@
+# ── Core API Keys & Database ──────────────────────────────────────────────────
 GEMINI_API_KEY=AIzaSyCaXONqjBbKshAE1zUdK5-jLuc5MEz1lD8
 SUPABASE_URL=https://zuvscvatsugwdesxnfpe.supabase.co
 SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1dnNjdmF0c3Vnd2Rlc3huZnBlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NzU2NzEwMywiZXhwIjoyMDgzMTQzMTAzfQ.R8yTLSoD6C4e_5AAMOfAh2ka3LGxjM8MKAXUHoy8z3M
-DEFAULT_PASS=ednetpro_2026
-S3_BUCKET=el-nombre-de-tu-bucket
+DEFAULT_PASS=""
+META_AD_ACCOUNT_ID="322521279095"
+   EAAWQjt7Q8PABSPZAnBzQTuOAGaC50nmZAaDlthEgO9oTELQ1HDynbHyHjmxVuS9DhCJ1JKHeQdsPmLzihx085y2ZAUJ0H3Krel6XK4ai3KwBUeARdobjhZBD9q7E5r9doB0ZCxZCrYjR1ZBI20vsZC6L4LvwV8sea7ZCfDjdoBdjY53zhtzFtUSVWIi68vXAGJECS
+  
+# ── Configuración Servidor VPS Hetzner ─────────────────────────────────────────
+# Cambia el puerto si tu FastAPI corre en uno diferente (ej: 8000 o 5000)
+BASE_URL=http://178.105.48.103:8000
+PUBLIC_URL=http://178.105.48.103:8000
+LOCAL_STORAGE_DIR=app/storage_vault
+
+# ── Compatibilidad de Almacenamiento Local (Evita errores de imports) ──────────
+# Dejamos estas variables con nombres fijos para que el código viejo no se rompa
+S3_BUCKET=local-vps-hetzner
+AWS_REGION=us-east-1
 
 # ── Google Calendar ────────────────────────────────────────────────────────────
 # Pega aquí el JSON completo de tu Service Account (en una sola línea)
@@ -14,9 +27,5 @@ GOOGLE_CALENDAR_ID=zeinn05.1983@gmail.com
 # Zona horaria y duración de citas en minutos
 CALENDAR_TIMEZONE=America/Bogota
 CALENDAR_EVENT_DURATION_MIN=60
-# URL pública del servidor (para que Vapi sepa dónde enviar los tool-calls)
-PUBLIC_URL=https://tu-dominio.com
-AWS_REGION=us-east-2
-S3_URL_EXPIRY=600
-AWS_ACCESS_KEY_ID=TU_LLAVE_DE_AWS
-AWS_SECRET_ACCESS_KEY=TU_CLAVE_SECRETA_DE_AWS
+TELEGRAM_BOT_TOKEN="7547929807:AAH2ONbVeIWXrc3Xdg8vpzyGClHg7IqMZjw"
+ALLOWED_TELEGRAM_ID=1086438596
