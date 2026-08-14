@@ -7,7 +7,7 @@ import plotly.express as px
 import streamlit as st
 
 from pb_store import fetch_ventas_dataframe, insert_venta
-from ui import require_pocketbase, show_pb_notice
+from ui import render_ventas_gestion_table, require_pocketbase, show_pb_notice
 
 st.set_page_config(
     page_title="Centro de Comando | ED NET PRO",
@@ -149,8 +149,10 @@ with c1:
 
 with c2:
     st.subheader("📋 Últimas Transacciones")
-    cols_show = [c for c in ("cliente", "monto", "estado") if c in df.columns]
-    if cols_show and not df.empty:
+    if not df.empty and "id" in df.columns:
+        render_ventas_gestion_table(df, key_prefix="dashboard", max_rows=8)
+    elif not df.empty:
+        cols_show = [c for c in ("cliente", "monto", "estado") if c in df.columns]
         st.dataframe(
             df[cols_show].sort_values(by="monto", ascending=False),
             hide_index=True,

@@ -169,6 +169,51 @@ def fetch_ventas_dataframe():
     return df, level, message
 
 
+def delete_record(collection: str, record_id: str) -> dict[str, Any]:
+    """Elimina un registro de PocketBase por ID."""
+    rid = str(record_id).strip()
+    if not rid:
+        return {"ok": False, "message": "ID de registro inválido.", "status_code": 0}
+
+    ready, detail = pocketbase_ready()
+    if not ready:
+        return {"ok": False, "message": f"PocketBase no disponible: {detail}", "status_code": 0}
+
+    try:
+        response = pb.pb_request(
+            "DELETE",
+            f"/api/collections/{collection}/records/{rid}",
+        )
+    except Exception as exc:
+        return {"ok": False, "message": f"Error de conexión con PocketBase: {exc}", "status_code": 0}
+
+    status = getattr(response, "status_code", 0)
+    if status in (200, 204):
+        return {
+            "ok": True,
+            "message": "Registro eliminado correctamente.",
+            "status_code": status,
+        }
+
+    detail = ""
+    try:
+        detail = response.text[:200]
+    except Exception:
+        pass
+
+    if status == 404:
+        message = "El registro ya no existe o fue eliminado."
+    else:
+        message = f"No se pudo eliminar (código {status}). {detail}".strip()
+
+    return {"ok": False, "message": message, "status_code": status}
+
+
+def delete_venta(record_id: str) -> dict[str, Any]:
+    """Elimina una venta de la colección ventas."""
+    return delete_record(VENTAS_COLLECTION, record_id)
+
+
 def insert_venta(
     *,
     cliente: str,
@@ -372,6 +417,8 @@ def save_planes_config(data: dict) -> dict[str, Any]:
 
 
 __all__ = [
+    "delete_record",
+    "delete_venta",
     "fetch_ventas",
     "fetch_ventas_dataframe",
     "insert_venta",

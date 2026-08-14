@@ -12,7 +12,7 @@ import pandas as pd
 import streamlit as st
 
 from pb_store import fetch_ventas_dataframe
-from ui import require_pocketbase, show_pb_notice
+from ui import render_ventas_gestion_table, require_pocketbase, show_pb_notice
 
 st.set_page_config(page_title="Gestión de Clientes", page_icon="👥")
 
@@ -34,4 +34,4 @@ else:
     if df.empty:
         st.info("No hay registros que coincidan con el filtro.")
     else:
-        st.dataframe(df, use_container_width=True)
+        render_ventas_gestion_table(df, key_prefix="clientes")

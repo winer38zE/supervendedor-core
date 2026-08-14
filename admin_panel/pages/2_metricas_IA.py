@@ -12,7 +12,7 @@ import plotly.express as px
 import streamlit as st
 
 from pb_store import fetch_ventas_dataframe
-from ui import require_pocketbase, show_pb_notice
+from ui import render_ventas_gestion_table, require_pocketbase, show_pb_notice
 
 st.set_page_config(page_title="Cerebro IA", page_icon="🧠")
 
@@ -58,4 +58,6 @@ else:
     else:
         st.info("Los registros no incluyen campos producto/monto para graficar.")
 
-st.success("🤖 El sistema sincroniza métricas desde PocketBase en tiempo real.")
+    st.divider()
+    st.subheader("📋 Registros de ventas")
+    render_ventas_gestion_table(df, key_prefix="metricas")
