@@ -1,14 +1,12 @@
+from admin_panel.ui import ensure_project_root, require_pocketbase
+
+ensure_project_root()
+
 import os
-import sys
-from pathlib import Path
 
 import streamlit as st
 
-_ROOT = Path(__file__).resolve().parents[2]
-if str(_ROOT) not in sys.path:
-    sys.path.insert(0, str(_ROOT))
-
-from admin_panel.pb_store import pocketbase_ready, save_planes_config
+from admin_panel.pb_store import save_planes_config
 
 st.set_page_config(page_title="Planes y Paquetes", page_icon="💼", layout="wide")
 
@@ -32,17 +30,13 @@ planes_data = {
     },
 }
 
-pb_ok, pb_detail = pocketbase_ready()
-if not pb_ok:
-    st.warning(f"PocketBase no configurado: {pb_detail}")
-    st.info("Configura las variables POCKETBASE_* en `.env` para guardar planes.")
-else:
-    st.caption(f"PocketBase · {pb_detail}")
+_, pb_detail = require_pocketbase()
+st.caption(f"PocketBase · {pb_detail}")
 
 client_id = st.text_input(
     "ID Cliente / Tenant",
     value=os.getenv("CHAT_TENANT_ID", "edwuar"),
-    help="Se usa como clave única al guardar en PocketBase (colección planes_config).",
+    help="Clave única en PocketBase (colección planes_config).",
 )
 
 usar_bundle = st.checkbox("🔥 Activar Pack Completo (Los 3 servicios juntos - 20% de descuento)")
@@ -79,9 +73,7 @@ else:
     st.metric("Total Mensual Seleccionado", f"${total_mes:,.0f} COP")
 
 if st.button("💾 Guardar Configuración de Plan en PocketBase", type="primary"):
-    if not pb_ok:
-        st.warning("Conecta PocketBase antes de guardar.")
-    elif total_mes <= 0:
+    if total_mes <= 0:
         st.warning("Selecciona al menos un plan o activa el Pack Completo.")
     else:
         result = save_planes_config(

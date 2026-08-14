@@ -25,7 +25,7 @@ from dotenv import load_dotenv
 
 load_dotenv(ROOT / ".env")
 
-from app.database import pocketbase_client as pb
+from app.database import pocketbase_client as pb  # noqa: E402 — PocketBase HTTP, no Supabase
 
 VENTAS_COLLECTION = os.getenv("VENTAS_COLLECTION", "ventas").strip() or "ventas"
 PLANES_CONFIG_COLLECTION = os.getenv("PLANES_CONFIG_COLLECTION", "planes_config").strip() or "planes_config"
@@ -154,6 +154,19 @@ def fetch_ventas(*, per_page: int = 500) -> tuple[list[dict[str, Any]], NoticeLe
 
     level, message = _friendly_fetch_notice(last_status or 400)
     return [], level, message
+
+
+def fetch_ventas_dataframe():
+    """Atajo: ventas como DataFrame + aviso PocketBase."""
+    import pandas as pd
+
+    items, level, message = fetch_ventas()
+    if not items:
+        return pd.DataFrame(columns=["cliente", "producto", "monto", "estado"]), level, message
+    df = pd.DataFrame(items)
+    if "monto" in df.columns:
+        df["monto"] = pd.to_numeric(df["monto"], errors="coerce").fillna(0)
+    return df, level, message
 
 
 def insert_venta(
@@ -360,6 +373,7 @@ def save_planes_config(data: dict) -> dict[str, Any]:
 
 __all__ = [
     "fetch_ventas",
+    "fetch_ventas_dataframe",
     "insert_venta",
     "pocketbase_ready",
     "save_planes_config",

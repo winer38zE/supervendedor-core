@@ -1,16 +1,14 @@
-import sys
+from admin_panel.ui import ensure_project_root, require_pocketbase, show_pb_notice
+
+ensure_project_root()
+
 import time
-from pathlib import Path
 
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-_ROOT = Path(__file__).resolve().parents[1]
-if str(_ROOT) not in sys.path:
-    sys.path.insert(0, str(_ROOT))
-
-from admin_panel.pb_store import fetch_ventas, insert_venta, pocketbase_ready
+from admin_panel.pb_store import fetch_ventas_dataframe, insert_venta
 
 st.set_page_config(
     page_title="Centro de Comando | ED NET PRO",
@@ -39,30 +37,20 @@ st.markdown(
 )
 
 
-@st.cache_resource
-def init_pocketbase():
-    return pocketbase_ready()
-
-
-def _build_ventas_df(datos: list) -> pd.DataFrame:
-    if not datos:
-        return pd.DataFrame(columns=["cliente", "producto", "monto", "estado"])
-    df = pd.DataFrame(datos)
-    if "monto" in df.columns:
-        df["monto"] = pd.to_numeric(df["monto"], errors="coerce").fillna(0)
-    return df
-
-
 def _show_fetch_notice(level: str, message: str) -> None:
-    if not message or level == "none":
-        return
-    if level == "warning":
-        st.warning(message)
-    else:
-        st.info(message)
+    show_pb_notice(level, message)
 
 
-# Precios predeterminados por producto (COP)
+_, pb_detail = require_pocketbase()
+
+st.title("⚡ ED NET PRO | Sistema de Control IA")
+st.markdown("### Monitoreo en tiempo real de Agentes Vapi y WhatsApp")
+st.caption(f"Backend: PocketBase · {pb_detail}")
+st.divider()
+
+df, notice_level, notice_msg = fetch_ventas_dataframe()
+_show_fetch_notice(notice_level, notice_msg)
+
 PRODUCTOS_PRECIOS: dict[str, int] = {
     "Tarjeta NFC": 150_000,
     "Chatbot IA": 350_000,
@@ -126,23 +114,6 @@ def _render_simulador_ventas() -> None:
                     st.error(message)
 
 
-pb_ok, pb_detail = init_pocketbase()
-
-st.title("⚡ ED NET PRO | Sistema de Control IA")
-st.markdown("### Monitoreo en tiempo real de Agentes Vapi y WhatsApp")
-st.divider()
-
-if not pb_ok:
-    st.warning(f"PocketBase no configurado: {pb_detail}")
-    st.info("Configura POCKETBASE_URL, POCKETBASE_EMAIL y POCKETBASE_PASSWORD en `.env`")
-    st.stop()
-
-st.caption(f"Backend: PocketBase · {pb_detail}")
-
-datos, notice_level, notice_msg = fetch_ventas()
-_show_fetch_notice(notice_level, notice_msg)
-
-df = _build_ventas_df(datos)
 total_ventas = float(df["monto"].sum()) if "monto" in df.columns and not df.empty else 0.0
 total_leads = len(df)
 ticket_promedio = total_ventas / total_leads if total_leads > 0 else 0.0
