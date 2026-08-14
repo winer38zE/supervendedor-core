@@ -52,7 +52,6 @@ else:
             x="producto",
             y="Ingresos",
             title="Ingresos por producto (PocketBase)",
-            markers=True,
         )
         st.plotly_chart(fig, use_container_width=True)
     else:
