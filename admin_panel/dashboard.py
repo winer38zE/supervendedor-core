@@ -1,6 +1,4 @@
-from admin_panel.ui import ensure_project_root, require_pocketbase, show_pb_notice
-
-ensure_project_root()
+import bootstrap  # noqa: F401 — configura sys.path (local + Streamlit Cloud)
 
 import time
 
@@ -8,7 +6,8 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from admin_panel.pb_store import fetch_ventas_dataframe, insert_venta
+from pb_store import fetch_ventas_dataframe, insert_venta
+from ui import require_pocketbase, show_pb_notice
 
 st.set_page_config(
     page_title="Centro de Comando | ED NET PRO",

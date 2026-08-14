@@ -1,12 +1,17 @@
-from admin_panel.ui import ensure_project_root, require_pocketbase
-
-ensure_project_root()
-
 import os
+import sys
+from pathlib import Path
+
+_panel = Path(__file__).resolve().parents[1]
+if str(_panel) not in sys.path:
+    sys.path.insert(0, str(_panel))
+
+import bootstrap  # noqa: F401
 
 import streamlit as st
 
-from admin_panel.pb_store import save_planes_config
+from pb_store import save_planes_config
+from ui import require_pocketbase
 
 st.set_page_config(page_title="Planes y Paquetes", page_icon="💼", layout="wide")
 

@@ -1,12 +1,18 @@
-from admin_panel.ui import ensure_project_root, require_pocketbase, show_pb_notice
+import sys
+from pathlib import Path
 
-ensure_project_root()
+_panel = Path(__file__).resolve().parents[1]
+if str(_panel) not in sys.path:
+    sys.path.insert(0, str(_panel))
+
+import bootstrap  # noqa: F401
 
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from admin_panel.pb_store import fetch_ventas_dataframe
+from pb_store import fetch_ventas_dataframe
+from ui import require_pocketbase, show_pb_notice
 
 st.set_page_config(page_title="Cerebro IA", page_icon="🧠")
 

@@ -29,7 +29,7 @@ def show_pb_notice(level: str, message: str) -> None:
 
 def require_pocketbase() -> tuple[bool, str]:
     ensure_project_root()
-    from admin_panel.pb_store import pocketbase_ready
+    from pb_store import pocketbase_ready
 
     ok, detail = pocketbase_ready()
     if not ok:
