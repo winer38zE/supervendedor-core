@@ -1,0 +1,48 @@
+{
+  "name": "ED NET PRO — Content Outlier → Ads (1 llamada)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 12 }]
+        }
+      },
+      "id": "schedule",
+      "name": "Cada 12h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPERVENDEDOR_URL }}/api/v1/content/pipeline/run",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"tenant_id\": \"{{ $env.CHAT_TENANT_ID || 'edwuar' }}\",\n  \"platform\": \"instagram\",\n  \"metrics\": {\n    \"views\": 500000,\n    \"likes\": 42000,\n    \"comments\": 1800,\n    \"shares\": 9500\n  },\n  \"niche\": \"ropa deportiva mujer\",\n  \"caption\": \"El error que cometen el 90% de las tiendas online al vender por WhatsApp...\",\n  \"product_focus\": \"enterizo deportivo\",\n  \"single_pass\": true,\n  \"launch_ads\": true,\n  \"auto_producto\": true,\n  \"use_trends\": true,\n  \"llm_preference\": \"openai\",\n  \"webhook_url\": \"{{ $env.N8N_WEBHOOK_BASE_URL }}/webhook/content-finished\"\n}",
+        "options": { "timeout": 120000 }
+      },
+      "id": "pipeline-run",
+      "name": "POST /content/pipeline/run",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REEMPLAZAR",
+          "name": "Supervendedor X-API-Key"
+        }
+      },
+      "notes": "1 sola llamada: analyze + guion + ads en background"
+    }
+  ],
+  "connections": {
+    "Cada 12h": {
+      "main": [[{ "node": "POST /content/pipeline/run", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "ED NET PRO" }, { "name": "Content" }]
+}

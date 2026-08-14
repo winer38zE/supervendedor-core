@@ -18,8 +18,10 @@ Endpoints:
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+
+from app.security import verify_api_key
 
 from app.services.centinela import (
     CalculadoraQuitas,
@@ -27,8 +29,10 @@ from app.services.centinela import (
     calcular_intereses,
 )
 
+from app.security import verify_api_key
+
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(verify_api_key)])
 
 
 # ══════════════════════════════════════════════════════════════════════════════

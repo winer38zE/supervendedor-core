@@ -216,18 +216,16 @@ def _recolectar_llamadas(client_id: str, tenant_id: str, n: int) -> list[dict]:
 
 def _leer_leads_supabase(tenant_id: str, n: int) -> list[dict]:
     """Lee los últimos N leads de leads_crm con fuente vapi o whatsapp."""
-    sb_url = os.environ.get("SUPABASE_URL", "")
-    sb_key = os.environ.get("SUPABASE_KEY", "")
-    if not sb_url or not sb_key:
-        return []
     try:
-        from supabase import create_client
-        db  = create_client(sb_url, sb_key)
+        from app.database.supabase_client import get_client
+        db = get_client()
+        if not db:
+            return []
         res = (
             db.table("leads_crm")
             .select("nombre, estado, lead_score, notas, metadata, created_at")
             .eq("tenant_id", tenant_id)
-            .in_("fuente", ["vapi", "whatsapp", "llamada"])
+            .in_("fuente", ["vapi", "whatsapp", "llamada", "hunter"])
             .order("created_at", desc=True)
             .limit(n)
             .execute()
@@ -244,7 +242,7 @@ def _leer_leads_supabase(tenant_id: str, n: int) -> list[dict]:
             for r in (res.data or [])
         ]
     except Exception as e:
-        logger.warning(f"[Evolver] Supabase no disponible: {e}")
+        logger.warning(f"[Evolver] DB no disponible: {e}")
         return []
 
 
@@ -491,13 +489,11 @@ def _knowledge_fallback(stats: dict, version: int, timestamp: str) -> dict:
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _get_client_config(client_id: str) -> Optional[dict]:
-    sb_url = os.environ.get("SUPABASE_URL", "")
-    sb_key = os.environ.get("SUPABASE_KEY", "")
-    if not sb_url or not sb_key:
-        return None
     try:
-        from supabase import create_client
-        db  = create_client(sb_url, sb_key)
+        from app.database.supabase_client import get_client
+        db = get_client()
+        if not db:
+            return None
         res = (
             db.table("clients_config")
             .select("dynamic_knowledge, modo_operacion, negocio_nombre")
@@ -513,18 +509,15 @@ def _get_client_config(client_id: str) -> Optional[dict]:
 
 def _guardar_dynamic_knowledge(client_id: str, knowledge: dict) -> bool:
     """
-    Actualiza el campo dynamic_knowledge en clients_config.
-    Si el registro no existe, lo crea con valores mínimos.
+    Actualiza dynamic_knowledge en clients_config (PocketBase o Supabase).
     """
-    sb_url = os.environ.get("SUPABASE_URL", "")
-    sb_key = os.environ.get("SUPABASE_KEY", "")
-    if not sb_url or not sb_key:
-        logger.warning("[Evolver] Sin Supabase — dynamic_knowledge no guardado.")
-        _guardar_knowledge_local(client_id, knowledge)
-        return False
     try:
-        from supabase import create_client
-        db = create_client(sb_url, sb_key)
+        from app.database.supabase_client import get_client
+        db = get_client()
+        if not db:
+            logger.warning("[Evolver] Sin DB — dynamic_knowledge no guardado.")
+            _guardar_knowledge_local(client_id, knowledge)
+            return False
         db.table("clients_config").upsert(
             {
                 "client_id":         client_id,
@@ -533,10 +526,10 @@ def _guardar_dynamic_knowledge(client_id: str, knowledge: dict) -> bool:
             },
             on_conflict="client_id",
         ).execute()
-        logger.info(f"[Evolver] dynamic_knowledge v{knowledge.get('version')} guardado en Supabase")
+        logger.info(f"[Evolver] dynamic_knowledge v{knowledge.get('version')} guardado")
         return True
     except Exception as e:
-        logger.error(f"[Evolver] Error guardando en Supabase: {e}")
+        logger.error(f"[Evolver] Error guardando knowledge: {e}")
         _guardar_knowledge_local(client_id, knowledge)
         return False
 

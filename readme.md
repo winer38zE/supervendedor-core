@@ -24,4 +24,18 @@ Este sistema utiliza una arquitectura de microservicios moderna ("Agencia USA"):
 pip install -r requirements.txt
 
 # Configurar variables de entorno
-# Renombrar .env.example a .env y colocar claves
+# Copiar .env.example a .env y completar claves
+
+### Tests antes de deploy (Coolify)
+
+```powershell
+.\scripts\run_tests.ps1
+```
+
+O manualmente:
+
+```bash
+pip install pytest httpx
+set FOLLOWUP_SCHEDULER_ENABLED=false
+pytest tests/test_smoke.py -v
+```

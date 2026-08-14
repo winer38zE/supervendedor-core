@@ -1,0 +1,33 @@
+2026/07/29-00:46:54.683 98b4 Reusing MANIFEST C:\Users\Edwuar\Desktop\supervendedor-core-ednetpro\.shein_browser_profile\Default\IndexedDB\https_www.shein.com.co_0.indexeddb.leveldb/MANIFEST-000001
+2026/07/29-00:46:54.684 98b4 Recovering log #17
+2026/07/29-00:46:54.701 98b4 Reusing old log C:\Users\Edwuar\Desktop\supervendedor-core-ednetpro\.shein_browser_profile\Default\IndexedDB\https_www.shein.com.co_0.indexeddb.leveldb/000017.log 
+2026/07/29-00:47:08.650 97f4 Level-0 table #22: started
+2026/07/29-00:47:08.682 97f4 Level-0 table #22: 179807 bytes OK
+2026/07/29-00:47:08.690 97f4 Delete type=0 #17
+2026/07/29-00:47:08.743 97f4 Manual compaction at level-0 from '\x00\x09\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x0a\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/07/29-00:47:12.585 98b4 Compacting 1@1 + 1@2 files
+2026/07/29-00:47:12.658 98b4 Generated table #23@1: 443 keys, 61252 bytes
+2026/07/29-00:47:12.658 98b4 Compacted 1@1 + 1@2 files => 61252 bytes
+2026/07/29-00:47:12.662 98b4 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/07/29-00:47:12.664 98b4 Delete type=2 #19
+2026/07/29-00:47:12.664 98b4 Delete type=2 #22
+2026/07/29-00:47:20.893 9a4c Level-0 table #25: started
+2026/07/29-00:47:20.955 9a4c Level-0 table #25: 46453 bytes OK
+2026/07/29-00:47:20.995 9a4c Delete type=0 #21
+2026/07/29-00:47:20.998 97f4 Manual compaction at level-0 from '\x00\x0a\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x0b\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/07/29-00:47:21.533 98b4 Compacting 1@1 + 1@2 files
+2026/07/29-00:47:21.585 98b4 Generated table #26@1: 495 keys, 71460 bytes
+2026/07/29-00:47:21.585 98b4 Compacted 1@1 + 1@2 files => 71460 bytes
+2026/07/29-00:47:21.626 98b4 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/07/29-00:47:21.627 98b4 Delete type=2 #23
+2026/07/29-00:47:21.628 98b4 Delete type=2 #25
+2026/07/29-00:47:50.022 9a4c Level-0 table #28: started
+2026/07/29-00:47:50.153 9a4c Level-0 table #28: 47235 bytes OK
+2026/07/29-00:47:50.156 9a4c Delete type=0 #24
+2026/07/29-00:47:50.205 98b4 Manual compaction at level-0 from '\x00\x0b\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x0c\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/07/29-00:47:50.218 9a4c Compacting 1@1 + 1@2 files
+2026/07/29-00:47:50.285 9a4c Generated table #29@1: 370 keys, 47462 bytes
+2026/07/29-00:47:50.285 9a4c Compacted 1@1 + 1@2 files => 47462 bytes
+2026/07/29-00:47:50.290 9a4c compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/07/29-00:47:50.290 9a4c Delete type=2 #26
+2026/07/29-00:47:50.291 9a4c Delete type=2 #28

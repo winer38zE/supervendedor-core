@@ -11,8 +11,17 @@ python-dotenv
 requests
 httpx
 google-generativeai
+google-genai
 anthropic
 google-api-python-client==2.100.0
 google-auth-httplib2==0.2.0
 google-auth-oauthlib==1.2.0
 dateparser==1.1.8
+playwright>=1.42.0
+openpyxl>=3.1.0
+pytest>=8.0.0
+httpx>=0.27.0
+pytrends>=4.9.2
+facebook-business>=19.0.0
+mem0ai>=0.1.0
+sqlalchemy>=2.0.0

@@ -20,10 +20,12 @@ import base64
 from typing import Optional
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-router = APIRouter()
+from app.security import verify_api_key
+
+router = APIRouter(dependencies=[Depends(verify_api_key)])
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 BASE_URL = "https://generativelanguage.googleapis.com/v1beta"

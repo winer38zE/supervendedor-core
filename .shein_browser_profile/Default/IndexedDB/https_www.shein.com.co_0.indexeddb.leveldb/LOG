@@ -1,0 +1,21 @@
+2026/07/29-00:54:46.103 9b04 Reusing MANIFEST C:\Users\Edwuar\Desktop\supervendedor-core-ednetpro\.shein_browser_profile\Default\IndexedDB\https_www.shein.com.co_0.indexeddb.leveldb/MANIFEST-000001
+2026/07/29-00:54:46.104 9b04 Recovering log #27
+2026/07/29-00:54:46.120 9b04 Reusing old log C:\Users\Edwuar\Desktop\supervendedor-core-ednetpro\.shein_browser_profile\Default\IndexedDB\https_www.shein.com.co_0.indexeddb.leveldb/000027.log 
+2026/07/29-00:55:06.190 9f0c Level-0 table #32: started
+2026/07/29-00:55:06.267 9f0c Level-0 table #32: 142807 bytes OK
+2026/07/29-00:55:06.322 9f0c Delete type=0 #27
+2026/07/29-00:55:06.357 9f0c Manual compaction at level-0 from '\x00\x0c\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x0d\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/07/29-00:55:07.273 1be0 Compacting 1@1 + 1@2 files
+2026/07/29-00:55:07.361 1be0 Generated table #33@1: 235 keys, 33020 bytes
+2026/07/29-00:55:07.361 1be0 Compacted 1@1 + 1@2 files => 33020 bytes
+2026/07/29-00:55:07.391 1be0 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/07/29-00:55:07.394 1be0 Delete type=2 #29
+2026/07/29-00:55:07.395 1be0 Delete type=2 #32
+2026/07/29-00:55:14.749 1be0 Level-0 table #35: started
+2026/07/29-00:55:14.760 1be0 Level-0 table #35: 56526 bytes OK
+2026/07/29-00:55:14.765 1be0 Delete type=0 #31
+2026/07/29-00:55:14.766 9f0c Manual compaction at level-0 from '\x00\x0d\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x0e\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/07/29-00:55:14.813 1be0 Compacting 1@1 + 1@2 files
+2026/07/29-00:55:14.823 1be0 Generated table #36@1: 351 keys, 45894 bytes
+2026/07/29-00:55:14.823 1be0 Compacted 1@1 + 1@2 files => 45894 bytes
+2026/07/29-00:55:14.827 1be0 compacted to: files[ 0 0 1 0 0 0 0 ]

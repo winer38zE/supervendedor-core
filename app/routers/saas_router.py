@@ -4,11 +4,11 @@ app/routers/saas_router.py
 API SaaS Multi-tenant — Registro, Dashboard, Wallet y Administración.
 
 Endpoints públicos (tenant):
-  POST /saas/tenants/register           → registrar nuevo tenant + arrancar trial
-  GET  /saas/tenants/{id}/dashboard     → HTML dashboard ROI
-  GET  /saas/tenants/{id}/wallet        → saldo + últimas transacciones (JSON)
+  POST /saas/tenants/register           → registrar nuevo tenant (requiere X-API-Key)
+  GET  /saas/tenants/{id}/dashboard     → HTML dashboard ROI (requiere X-API-Key)
+  GET  /saas/tenants/{id}/wallet        → saldo + últimas transacciones (requiere X-API-Key)
 
-Endpoints de administración (requieren x-master-key: ednetpro_2026):
+Endpoints de administración (requieren x-master-key / MASTER_KEY en .env):
   GET  /saas/admin/tenants              → lista todos los tenants
   POST /saas/admin/tenants/{id}/credit  → agrega crédito manualmente
   POST /saas/admin/trials/expire        → procesa expiración manual de trials
@@ -31,6 +31,7 @@ from ..services.billing import (
 )
 from ..services.trial_manager import check_and_expire_trials, register_tenant
 from ..middleware.auth_master import require_master_key
+from ..security import verify_api_key
 
 router = APIRouter(prefix="/saas", tags=["SaaS Platform"])
 
@@ -62,7 +63,7 @@ class UpdateEstadoBody(BaseModel):
 # REGISTRO
 # ══════════════════════════════════════════════════════════════════════════════
 
-@router.post("/tenants/register", summary="Registrar nuevo tenant + trial 3 días")
+@router.post("/tenants/register", summary="Registrar nuevo tenant + trial 3 días", dependencies=[Depends(verify_api_key)])
 async def register(body: RegisterTenantBody):
     """
     Registra un nuevo cliente en la plataforma SaaS.
@@ -84,7 +85,7 @@ async def register(body: RegisterTenantBody):
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/tenants/{tenant_id}/dashboard", response_class=HTMLResponse,
-            summary="Dashboard ROI del tenant")
+            summary="Dashboard ROI del tenant", dependencies=[Depends(verify_api_key)])
 async def dashboard(tenant_id: str):
     """
     Dashboard minimalista con métricas de ROI, saldo y actividad de llamadas.
@@ -372,7 +373,7 @@ async def dashboard(tenant_id: str):
 # WALLET (JSON)
 # ══════════════════════════════════════════════════════════════════════════════
 
-@router.get("/tenants/{tenant_id}/wallet", summary="Estado del wallet y transacciones")
+@router.get("/tenants/{tenant_id}/wallet", summary="Estado del wallet y transacciones", dependencies=[Depends(verify_api_key)])
 async def wallet_status(tenant_id: str):
     return get_wallet_status(tenant_id)
 

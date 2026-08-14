@@ -1,0 +1,150 @@
+{
+  "version": "1.0",
+  "name": "supervendedor-ednetpro-tools",
+  "description": "Herramientas HTTP para Hermes Agent → FastAPI Supervendedor (puerto 8000)",
+  "hermes_dashboard": "http://178.105.48.103:8085",
+  "api_base_url": "http://178.105.48.103:8000",
+  "auth": {
+    "type": "header",
+    "header_name": "X-API-Key",
+    "header_value_env": "INTERNAL_API_KEY"
+  },
+  "tools": [
+    {
+      "name": "catalog_bridge",
+      "description": "Consulta catálogo Shein, stock, precios ZOPA y productos destacados en PocketBase/cache local. Usar cuando el cliente pregunta por productos, tallas, precios o disponibilidad.",
+      "type": "http",
+      "method": "POST",
+      "url": "http://178.105.48.103:8000/api/v1/agents/catalog_bridge",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "{{INTERNAL_API_KEY}}"
+      },
+      "parameters": {
+        "type": "object",
+        "required": ["phone", "message"],
+        "properties": {
+          "user_id": { "type": "string", "description": "ID de usuario en Hermes/Evolution" },
+          "phone": { "type": "string", "description": "Teléfono WhatsApp del cliente" },
+          "message": { "type": "string", "description": "Mensaje del cliente sobre producto o catálogo" },
+          "context": {
+            "type": "object",
+            "properties": {
+              "product_query": { "type": "string", "description": "Nombre o referencia del producto" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "objection_killer",
+      "description": "Maneja objeciones de venta: precio alto, desconfianza en envío, 'voy a consultar', comparación con competencia. Devuelve respuesta persuasiva con precio autorizado.",
+      "type": "http",
+      "method": "POST",
+      "url": "http://178.105.48.103:8000/api/v1/agents/objection_killer",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "{{INTERNAL_API_KEY}}"
+      },
+      "parameters": {
+        "type": "object",
+        "required": ["phone", "message"],
+        "properties": {
+          "user_id": { "type": "string" },
+          "phone": { "type": "string" },
+          "message": { "type": "string", "description": "Objeción del cliente" },
+          "context": {
+            "type": "object",
+            "properties": {
+              "product_query": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "negotiator",
+      "description": "Negociador Hermes ZOPA: calcula contraoferta entre precio objetivo y precio mínimo según oferta del cliente. Usar en negociación activa de precio.",
+      "type": "http",
+      "method": "POST",
+      "url": "http://178.105.48.103:8000/api/v1/agents/negotiator",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "{{INTERNAL_API_KEY}}"
+      },
+      "parameters": {
+        "type": "object",
+        "required": ["phone", "message"],
+        "properties": {
+          "user_id": { "type": "string" },
+          "phone": { "type": "string" },
+          "message": { "type": "string", "description": "Mensaje con oferta o contraoferta del cliente" },
+          "context": {
+            "type": "object",
+            "properties": {
+              "user_offer": { "type": "number", "description": "Oferta numérica en COP" },
+              "product_query": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "closing",
+      "description": "Agente de cierre y reactivación: mensajes de urgencia, reserva 24h y confirmación de compra. Usar cuando el lead está caliente o estancado en negociación.",
+      "type": "http",
+      "method": "POST",
+      "url": "http://178.105.48.103:8000/api/v1/agents/closing",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "{{INTERNAL_API_KEY}}"
+      },
+      "parameters": {
+        "type": "object",
+        "required": ["phone", "message"],
+        "properties": {
+          "user_id": { "type": "string" },
+          "phone": { "type": "string" },
+          "message": { "type": "string" },
+          "context": {
+            "type": "object",
+            "properties": {
+              "nombre": { "type": "string" },
+              "estado": { "type": "string", "description": "negociando | agenda_pendiente" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "prospecto",
+      "description": "Shaka Quantum Prospector: scoring de probabilidad de compra B2B y línea de apertura para leads Hunter/Google Maps.",
+      "type": "http",
+      "method": "POST",
+      "url": "http://178.105.48.103:8000/api/v1/agents/prospecto",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "{{INTERNAL_API_KEY}}"
+      },
+      "parameters": {
+        "type": "object",
+        "required": ["phone", "message"],
+        "properties": {
+          "user_id": { "type": "string" },
+          "phone": { "type": "string" },
+          "message": { "type": "string" },
+          "context": {
+            "type": "object",
+            "properties": {
+              "lead_score": { "type": "integer", "minimum": 1, "maximum": 10 },
+              "prospecto": {
+                "type": "object",
+                "description": "Datos del negocio Hunter (nombre_negocio, categoria, ciudad, rating, etc.)"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

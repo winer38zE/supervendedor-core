@@ -1,0 +1,103 @@
+# =============================================================================
+# .claudeignore — Exclusiones para Claude Code (ahorro máximo de tokens)
+# Sintaxis tipo .gitignore. Evita indexación/exploración autónoma.
+# =============================================================================
+
+# --- Secretos y credenciales (NUNCA indexar) ---
+.env
+.env.*
+!.env.example
+. env
+*.pem
+*.key
+credentials.json
+**/secrets/**
+
+# --- Entornos y dependencias ---
+.venv/
+venv/
+env/
+node_modules/
+.shein_browser_profile/
+
+# --- Git, locks y cachés ---
+.git/
+**/.git/**
+*.lock
+__pycache__/
+**/__pycache__/**
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+
+# --- Bases de datos y almacenamiento local ---
+*.db
+*.sqlite
+*.sqlite3
+pocketbase/
+app/storage_vault/**
+**/qdrant/**
+**/mem0/**
+
+# --- Medios, binarios y artefactos pesados ---
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.svg
+*.ico
+*.mp3
+*.ogg
+*.wav
+*.m4a
+*.mp4
+*.webm
+*.zip
+*.tar
+*.gz
+*.7z
+*.pdf
+*.xlsx
+*.xls
+*.csv
+output_test.mp3
+test_image_*
+
+# --- Build, dist, logs ---
+dist/
+build/
+*.egg-info/
+*.log
+logs/
+
+# --- Documentación extensa (leer solo si el usuario lo pide) ---
+DOCUMENTACION_ARQUITECTURA_SUPERVENDEDOR.md
+docs/**
+POCKETBASE_SETUP.md
+readme.md
+
+# --- Módulos legacy / paralelos / no-core ---
+ED_NET_PRO/**
+admin_panel/**
+shein_analyzer/**
+scripts/n8n_*.json
+package-lock.json
+
+# --- Datos de prueba y mocks ---
+app/agents/mock_s3/**
+tests/**
+test_*.py
+
+# --- IDE y OS ---
+.cursor/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

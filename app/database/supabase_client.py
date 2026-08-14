@@ -1,69 +1,72 @@
 """
-app/database/supabase_client.py
-────────────────────────────────────────────────────────────────────────────────
-Cliente Supabase centralizado para todo el sistema ED NET PRO.
+app/database/supabase_client.py — Punto único de acceso a la base de datos.
 
-Responsabilidades:
-  - Singleton thread-safe del cliente Supabase (una sola conexión por proceso).
-  - upsert_lead_crm()          → crea o actualiza lead en leads_crm.
-  - insert_historial_llamada() → inserta una fila nueva por cada llamada de Vapi.
-  - guardar_llamada_completa() → orquesta ambas operaciones en una sola llamada.
+Backend por defecto: PocketBase (VPS).
+Alternativa legacy: Supabase (DB_BACKEND=supabase).
 
-Multi-tenant:
-  Cada operación recibe `tenant_id` (= client_id en este sistema) y lo filtra
-  en todas las queries. El backend usa service_role key que bypasea RLS, pero
-  escribimos tenant_id explícitamente en cada fila para que RLS funcione
-  cuando los clientes se autentiquen desde el frontend.
-
-Tablas que maneja este módulo:
-  - public.leads_crm          (UNIQUE tenant_id + telefono)
-  - public.historial_llamadas (sin unique — siempre insert)
-
-Variables de entorno requeridas:
-  SUPABASE_URL   → URL del proyecto Supabase
-  SUPABASE_KEY   → service_role key (NO la anon key)
+Variables PocketBase:
+  POCKETBASE_URL, POCKETBASE_EMAIL, POCKETBASE_PASSWORD
 """
 
 import logging
 import os
-from datetime import datetime, timezone
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
+_client = None
 
-# ══════════════════════════════════════════════════════════════════════════════
-# Singleton del cliente
-# ══════════════════════════════════════════════════════════════════════════════
 
-_client = None   # instancia única por proceso
+def get_backend() -> str:
+    return os.environ.get("DB_BACKEND", "pocketbase").lower().strip()
 
 
 def get_client():
     """
-    Retorna el cliente Supabase singleton.
-    Crea la conexión la primera vez; reutiliza después.
-    Retorna None si faltan las variables de entorno.
+    Retorna cliente de base de datos según DB_BACKEND.
+    PocketBase: adaptador compatible con .table().select().eq().execute()
+    Supabase:   cliente supabase-py legacy
     """
     global _client
     if _client is not None:
         return _client
 
+    backend = get_backend()
+
+    if backend == "pocketbase":
+        from app.database.pocketbase_adapter import get_pocketbase_client
+        _client = get_pocketbase_client()
+        logger.info("[DB] Backend PocketBase activo")
+        return _client
+
+    # ── Legacy Supabase ───────────────────────────────────────────────────────
     url = os.environ.get("SUPABASE_URL", "")
     key = os.environ.get("SUPABASE_KEY", "")
-
     if not url or not key:
-        logger.error("[Supabase] Faltan SUPABASE_URL o SUPABASE_KEY en las variables de entorno.")
+        logger.error("[DB] Supabase seleccionado pero faltan SUPABASE_URL / SUPABASE_KEY")
         return None
-
     try:
         from supabase import create_client
         _client = create_client(url, key)
-        logger.info("[Supabase] Cliente inicializado correctamente.")
+        logger.info("[DB] Backend Supabase activo")
         return _client
     except Exception as e:
-        logger.error(f"[Supabase] Error al crear cliente: {e}")
+        logger.error(f"[DB] Error Supabase: {e}")
         return None
+
+
+def db_health() -> dict:
+    if get_backend() == "pocketbase":
+        from app.database.pocketbase_client import health_check
+        return health_check()
+    return {"backend": "supabase", "configured": bool(os.environ.get("SUPABASE_URL"))}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Operaciones de dominio (backend-agnósticas vía get_client)
+# ══════════════════════════════════════════════════════════════════════════════
+
+from datetime import datetime, timezone
+from typing import Optional
 
 
 # ══════════════════════════════════════════════════════════════════════════════

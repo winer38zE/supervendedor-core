@@ -7,6 +7,7 @@ Stages:
   Prospecto → Calificado (Athena) → Negociando (Hermes) → Agenda Pendiente → Cerrado
 """
 
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 import os
@@ -112,6 +113,7 @@ class FunnelEngine:
                     "telefono":   telefono,
                     "estado":     new_stage.value,
                     "fuente":     "whatsapp",
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
                 }
                 if nombre:
                     row["nombre"] = nombre

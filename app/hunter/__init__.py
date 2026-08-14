@@ -1,25 +1,7 @@
 """
-app/hunter/__init__.py
-
-Motor de prospecting para ED NET PRO
+app/hunter/__init__.py — Motor de prospecting ED NET PRO
 """
 
-class ProspectingEngine:
-    """
-    Motor de prospecting inteligente.
-    Genera leads y contactos automáticamente.
-    """
-    
-    def __init__(self):
-        self.leads = []
-    
-    def prospect(self, query: str):
-        """Prospecting básico"""
-        print(f"[Prospecting] Buscando: {query}")
-        return []
-    
-    def __call__(self, *args, **kwargs):
-        return self.prospect(*args, **kwargs)
-
+from app.hunter.prospecting_engine import ProspectingEngine
 
 __all__ = ["ProspectingEngine"]

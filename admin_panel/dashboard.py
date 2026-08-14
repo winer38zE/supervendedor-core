@@ -1,19 +1,26 @@
-import streamlit as st
+import sys
+import time
+from pathlib import Path
+
 import pandas as pd
 import plotly.express as px
-from supabase import create_client
-import time
+import streamlit as st
 
-# --- CONFIGURACIÓN DE LA PÁGINA ---
+_ROOT = Path(__file__).resolve().parents[1]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+from admin_panel.pb_store import fetch_ventas, insert_venta, pocketbase_ready
+
 st.set_page_config(
     page_title="Centro de Comando | ED NET PRO",
     page_icon="🚀",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
-# --- ESTILOS VISUALES (MODO AGENCIA USA) ---
-st.markdown("""
+st.markdown(
+    """
 <style>
     .metric-card {
         background-color: #1E1E1E;
@@ -27,112 +34,161 @@ st.markdown("""
         color: #00FF94 !important;
     }
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
-# ---------------------------------------------------------
-# 🔑 AQUÍ PEGAS TUS CLAVES DE SUPABASE (SIN BORRAR LAS COMILLAS)
-# ---------------------------------------------------------
-SUPABASE_URL = "https://pbuhisckvkyugkujovus.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBidWhpc2Nrdmt5dWdrdWpvdnVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ1MzIwNDEsImV4cCI6MjA4MDEwODA0MX0.hdGLppPIQmzggImyXX1q1rTP7Vn_rXAfcr58-IK9P40"
 
-# --- CONEXIÓN A LA MEMORIA ---
 @st.cache_resource
-def init_db():
-    try:
-        if "PEGA_TU" in SUPABASE_URL: # Verificación de seguridad
-            return None
-        return create_client(SUPABASE_URL, SUPABASE_KEY)
-    except Exception as e:
-        return None
+def init_pocketbase():
+    return pocketbase_ready()
 
-supabase = init_db()
 
-# --- TÍTULO PRINCIPAL ---
+def _build_ventas_df(datos: list) -> pd.DataFrame:
+    if not datos:
+        return pd.DataFrame(columns=["cliente", "producto", "monto", "estado"])
+    df = pd.DataFrame(datos)
+    if "monto" in df.columns:
+        df["monto"] = pd.to_numeric(df["monto"], errors="coerce").fillna(0)
+    return df
+
+
+def _show_fetch_notice(level: str, message: str) -> None:
+    if not message or level == "none":
+        return
+    if level == "warning":
+        st.warning(message)
+    else:
+        st.info(message)
+
+
+# Precios predeterminados por producto (COP)
+PRODUCTOS_PRECIOS: dict[str, int] = {
+    "Tarjeta NFC": 150_000,
+    "Chatbot IA": 350_000,
+    "Suscripción IA": 200_000,
+    "Consultoría B2B": 500_000,
+}
+
+
+def _sync_monto_simulador() -> None:
+    """Actualiza el monto en session_state al cambiar el producto."""
+    producto = st.session_state.get("sim_producto")
+    if producto in PRODUCTOS_PRECIOS:
+        st.session_state.sim_monto = PRODUCTOS_PRECIOS[producto]
+
+
+def _render_simulador_ventas() -> None:
+    if "sim_monto" not in st.session_state:
+        st.session_state.sim_monto = PRODUCTOS_PRECIOS["Tarjeta NFC"]
+
+    st.image("https://cdn-icons-png.flaticon.com/512/9626/9626622.png", width=80)
+    st.header("🎮 Simulador de Ventas")
+    st.write("Registra un cierre de prueba en PocketBase (`ventas`).")
+
+    st.selectbox(
+        "Producto",
+        options=list(PRODUCTOS_PRECIOS.keys()),
+        key="sim_producto",
+        on_change=_sync_monto_simulador,
+    )
+    st.caption(f"Precio sugerido: ${PRODUCTOS_PRECIOS[st.session_state.sim_producto]:,} COP")
+
+    with st.form("test_form"):
+        cliente = st.text_input("Nombre Cliente", "Cliente Prueba")
+        monto = st.number_input(
+            "Monto (COP)",
+            value=int(st.session_state.sim_monto),
+            step=50_000,
+            min_value=0,
+        )
+        btn = st.form_submit_button("🔥 SIMULAR CIERRE")
+
+        if btn:
+            producto = st.session_state.sim_producto
+            if not cliente.strip():
+                st.warning("El nombre del cliente es obligatorio.")
+            elif monto <= 0:
+                st.warning("El monto debe ser mayor a cero.")
+            else:
+                success, message, _record = insert_venta(
+                    cliente=cliente.strip(),
+                    producto=producto,
+                    monto=monto,
+                    estado="Cerrado",
+                )
+                if success:
+                    st.session_state.sim_monto = int(monto)
+                    st.success(message)
+                    time.sleep(0.8)
+                    st.rerun()
+                else:
+                    st.error(message)
+
+
+pb_ok, pb_detail = init_pocketbase()
+
 st.title("⚡ ED NET PRO | Sistema de Control IA")
 st.markdown("### Monitoreo en tiempo real de Agentes Vapi y WhatsApp")
 st.divider()
 
-# --- VERIFICACIÓN DE CONEXIÓN ---
-if not supabase:
-    st.error("⚠️ FALTAN LAS CLAVES: Abre el código en VS Code y pega la URL y API Key de Supabase en las líneas 35 y 36.")
+if not pb_ok:
+    st.warning(f"PocketBase no configurado: {pb_detail}")
+    st.info("Configura POCKETBASE_URL, POCKETBASE_EMAIL y POCKETBASE_PASSWORD en `.env`")
     st.stop()
 
-# --- TRAER DATOS EN VIVO ---
-try:
-    response = supabase.table("ventas").select("*").execute()
-    datos = response.data
-except:
-    st.error("⚠️ Error: No se encuentra la tabla 'ventas' en Supabase. ¿Ya la creaste?")
-    st.stop()
+st.caption(f"Backend: PocketBase · {pb_detail}")
 
-if datos:
-    df = pd.DataFrame(datos)
-    
-    # Cálculos Matemáticos (KPIs)
-    total_ventas = df['monto'].sum()
-    total_leads = len(df)
-    ticket_promedio = total_ventas / total_leads if total_leads > 0 else 0
-    
-    # --- FILA 1: MÉTRICAS ---
-    col1, col2, col3, col4 = st.columns(4)
-    
+datos, notice_level, notice_msg = fetch_ventas()
+_show_fetch_notice(notice_level, notice_msg)
+
+df = _build_ventas_df(datos)
+total_ventas = float(df["monto"].sum()) if "monto" in df.columns and not df.empty else 0.0
+total_leads = len(df)
+ticket_promedio = total_ventas / total_leads if total_leads > 0 else 0.0
+
+col1, col2, col3, col4 = st.columns(4)
+with col1:
     st.metric("💰 INGRESOS TOTALES", f"$ {total_ventas:,.0f} COP")
-    with col2:
-        st.metric("🤖 VENTAS CERRADAS", f"{total_leads}", delta="Leads")
-    with col3:
-         st.metric("💎 TICKET PROMEDIO", f"$ {ticket_promedio:,.0f} COP")
-    with col4:
-        st.metric("🔥 ESTADO SISTEMA", "ONLINE", delta="Activo")
+with col2:
+    st.metric("🤖 VENTAS CERRADAS", f"{total_leads}", delta="Leads" if total_leads else None)
+with col3:
+    st.metric("💎 TICKET PROMEDIO", f"$ {ticket_promedio:,.0f} COP")
+with col4:
+    st.metric("🔥 ESTADO SISTEMA", "ONLINE", delta="Activo")
 
-    st.divider()
+st.divider()
 
-    # --- FILA 2: GRÁFICOS DE INGENIERÍA ---
-    c1, c2 = st.columns([2, 1])
-    
-    with c1:
-        st.subheader("📈 Rendimiento por Producto")
-        if not df.empty:
-            fig = px.bar(df, x="producto", y="monto", color="estado", 
-                         template="plotly_dark", title="Ingresos Generados",
-                         color_discrete_map={"Cerrado": "#00FF94", "Pendiente": "#FF4B4B"})
-            st.plotly_chart(fig, use_container_width=True)
-            
-    with c2:
-        st.subheader("📋 Últimas Transacciones")
-        if not df.empty:
-            # Mostrar tabla limpia
-            st.dataframe(
-                df[['cliente', 'monto', 'estado']].sort_values(by='monto', ascending=False),
-                hide_index=True,
-                height=300,
-                use_container_width=True
-            )
+c1, c2 = st.columns([2, 1])
 
-else:
-    st.info("👋 El sistema está conectado. Esperando la primera venta de la IA...")
+with c1:
+    st.subheader("📈 Rendimiento por Producto")
+    if not df.empty and "producto" in df.columns and "monto" in df.columns:
+        fig = px.bar(
+            df,
+            x="producto",
+            y="monto",
+            color="estado" if "estado" in df.columns else None,
+            template="plotly_dark",
+            title="Ingresos Generados",
+            color_discrete_map={"Cerrado": "#00FF94", "Pendiente": "#FF4B4B"},
+        )
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("Sin datos de productos aún. El gráfico aparecerá cuando registres ventas.")
 
-# --- BARRA LATERAL: CONTROL MANUAL (SIMULADOR) ---
+with c2:
+    st.subheader("📋 Últimas Transacciones")
+    cols_show = [c for c in ("cliente", "monto", "estado") if c in df.columns]
+    if cols_show and not df.empty:
+        st.dataframe(
+            df[cols_show].sort_values(by="monto", ascending=False),
+            hide_index=True,
+            height=300,
+            use_container_width=True,
+        )
+    else:
+        st.info("No hay transacciones registradas.")
+
 with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/9626/9626622.png", width=80)
-    st.header("🎮 Simulador de Ventas")
-    st.write("Usa esto para probar que el gráfico se mueve.")
-    
-    with st.form("test_form"):
-        cliente = st.text_input("Nombre Cliente", "Cliente Prueba")
-        prod = st.selectbox("Producto", ["Tarjeta NFC", "Suscripción IA", "Consultoría B2B"])
-        monto = st.number_input("Monto (COP)", value=150000, step=50000)
-        btn = st.form_submit_button("🔥 SIMULAR CIERRE")
-        
-        if btn:
-            try:
-                supabase.table("ventas").insert({
-                    "cliente": cliente,
-                    "producto": prod,
-                    "monto": monto,
-                    "estado": "Cerrado"
-                }).execute()
-                st.success("¡Venta registrada!")
-                time.sleep(1)
-                st.rerun()
-            except Exception as e:
-                st.error(f"Error al guardar: {e}")
+    _render_simulador_ventas()

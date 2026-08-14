@@ -1,10 +1,13 @@
 import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-import streamlit as st
+from pathlib import Path
+
 import pandas as pd
 import plotly.express as px
-from app.database import supabase
+import streamlit as st
+
+_ROOT = Path(__file__).resolve().parents[2]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
 
 st.set_page_config(page_title="Cerebro IA", page_icon="🧠")
 

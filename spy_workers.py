@@ -10,8 +10,7 @@ from typing import List, Dict, Any
 # ==========================================
 # CONFIGURACIÓN DEL ENTORNO
 # ==========================================
-# Tu servidor VPS de PocketBase
-POCKETBASE_URL = "http://178.105.48.103:8090"
+POCKETBASE_URL = os.getenv("POCKETBASE_URL", "http://178.105.48.103:8090")
 
 # Credenciales de Meta API
 META_ACCESS_TOKEN = os.getenv("META_ACCESS_TOKEN", "TU_TOKEN_DE_META")

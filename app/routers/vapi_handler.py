@@ -3,12 +3,13 @@ import os
 import textwrap
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from fastapi import APIRouter, BackgroundTasks, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 
 # ✅ CORREGIDO: Solo imports críticos en el top
 # from app.services.call_auditor import auditar_llamada
 from app.services.google_calendar import crear_evento
 from app.config import settings
+from app.security import verify_vapi_webhook
 from app.agents.prompts_factory import get_system_prompt
 
 router = APIRouter(prefix="/vapi", tags=["Vapi Voice"])
@@ -208,9 +209,21 @@ def extract_missed_info(transcripcion: str, client_id: str, call_outcome: str) -
 
 @router.post("/webhook")
 async def vapi_webhook(request: Request, background_tasks: BackgroundTasks):
-    """✅ CORREGIDO: Lazy imports dentro del endpoint para evitar issues al iniciar"""
+    verify_vapi_webhook(request)
+
     try:
         data = await request.json()
+
+        from app.services.processed_events import (
+            extract_vapi_event_id,
+            is_processed,
+            mark_processed,
+        )
+
+        event_id = extract_vapi_event_id(data)
+        if event_id and is_processed("vapi", event_id):
+            return {"status": "ok", "duplicate": True}
+
         message = data.get("message", {})
         message_type = message.get("type")
 
@@ -219,6 +232,8 @@ async def vapi_webhook(request: Request, background_tasks: BackgroundTasks):
             system_prompt, modo = get_system_prompt(client_id)
             tools = _build_assistant_tools(client_id)
             print(f"[Vapi] assistant-request | client_id='{client_id}' | modo='{modo}'")
+            if event_id:
+                mark_processed("vapi", event_id)
             return {
                 "assistant": {
                     "model": {
@@ -250,6 +265,8 @@ async def vapi_webhook(request: Request, background_tasks: BackgroundTasks):
                 result_text = handle_tool_call(tool_name, raw_args, client_id)
                 results.append({"toolCallId": tool_id, "result": result_text})
 
+            if event_id:
+                mark_processed("vapi", event_id)
             return {"results": results}
 
         if message_type == "end-of-call-report":
@@ -282,7 +299,12 @@ async def vapi_webhook(request: Request, background_tasks: BackgroundTasks):
             except ImportError:
                 print("[Warning] evolve_business_logic no disponible, omitiendo")
 
+            if event_id:
+                mark_processed("vapi", event_id)
             return {"status": "Procesado"}
+
+        if event_id:
+            mark_processed("vapi", event_id)
 
         return {"status": "Ignorado"}
 

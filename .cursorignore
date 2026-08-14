@@ -1,0 +1,29 @@
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Cachés de Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Control de versiones y base de datos
+.git/
+*.db
+*.sqlite3
+pocketbase/
+
+# Archivos de medios y temporales
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.mp3
+*.ogg
+*.wav
+*.zip
+
+# Archivos específicos generados en pruebas
+output_test.mp3
+test_image_*

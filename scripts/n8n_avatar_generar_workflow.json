@@ -1,0 +1,160 @@
+{
+  "name": "ED NET PRO — Generar Avatar",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual / Cron",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "text",
+              "name": "text",
+              "value": "Hola, soy tu asesor de ED NET PRO. ¿En qué puedo ayudarte hoy?",
+              "type": "string"
+            },
+            {
+              "id": "voice_id",
+              "name": "voice_id",
+              "value": "REEMPLAZA_CON_TU_VOICE_ID_ELEVENLABS",
+              "type": "string"
+            },
+            {
+              "id": "image_url",
+              "name": "image_url",
+              "value": "https://tu-cdn.com/avatar-base.jpg",
+              "type": "string"
+            },
+            {
+              "id": "webhook_url",
+              "name": "webhook_url",
+              "value": "={{ $env.N8N_WEBHOOK_BASE_URL }}/webhook/avatar-finished",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-payload",
+      "name": "Payload avatar",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPERVENDEDOR_URL }}/api/v1/avatares/generar",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \"{{ $json.text }}\",\n  \"voice_id\": \"{{ $json.voice_id }}\",\n  \"image_url\": \"{{ $json.image_url }}\",\n  \"webhook_url\": \"{{ $json.webhook_url }}\"\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "http-generar-avatar",
+      "name": "POST /avatares/generar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REEMPLAZAR_CON_CREDENCIAL",
+          "name": "Supervendedor X-API-Key"
+        }
+      },
+      "notes": "Credencial: header X-API-Key = INTERNAL_API_KEY"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "job-id-out",
+              "name": "job_id",
+              "value": "={{ $json.job_id }}",
+              "type": "string"
+            },
+            {
+              "id": "status-out",
+              "name": "status",
+              "value": "={{ $json.status }}",
+              "type": "string"
+            },
+            {
+              "id": "poll-url",
+              "name": "poll_url",
+              "value": "={{ $env.SUPERVENDEDOR_URL }}/api/v1/avatares/generar/{{ $json.job_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-job-info",
+      "name": "Guardar job_id",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [960, 300]
+    }
+  ],
+  "connections": {
+    "Manual / Cron": {
+      "main": [
+        [
+          {
+            "node": "Payload avatar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Payload avatar": {
+      "main": [
+        [
+          {
+            "node": "POST /avatares/generar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST /avatares/generar": {
+      "main": [
+        [
+          {
+            "node": "Guardar job_id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "ED NET PRO"
+    },
+    {
+      "name": "Avatares"
+    }
+  ],
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

@@ -1,0 +1,145 @@
+{
+  "name": "ED NET PRO — Content Multi-Tenant (batch o loop)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 12 }]
+        }
+      },
+      "id": "schedule",
+      "name": "Cada 12h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "mode-batch",
+              "leftValue": "={{ $env.CONTENT_MULTI_TENANT_MODE || 'batch' }}",
+              "rightValue": "batch",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-batch",
+      "name": "Modo batch?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPERVENDEDOR_URL }}/api/v1/content/pipeline/run-batch",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "limit", "value": "={{ $env.CONTENT_BATCH_LIMIT || 50 }}" }
+          ]
+        },
+        "options": { "timeout": 30000 }
+      },
+      "id": "batch-run",
+      "name": "POST run-batch (recomendado 1000+)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REEMPLAZAR",
+          "name": "Supervendedor X-API-Key"
+        }
+      },
+      "notes": "1 cron → N tenants en background con billing gate"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPERVENDEDOR_URL }}/api/v1/content/tenants/active",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "limit", "value": "={{ $env.CONTENT_BATCH_LIMIT || 100 }}" }
+          ]
+        },
+        "options": { "timeout": 30000 }
+      },
+      "id": "list-tenants",
+      "name": "GET tenants/active",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 420],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REEMPLAZAR",
+          "name": "Supervendedor X-API-Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "tenants",
+        "options": {}
+      },
+      "id": "split-tenants",
+      "name": "Split tenants",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [960, 420]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPERVENDEDOR_URL }}/api/v1/content/pipeline/run",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": { "timeout": 120000 }
+      },
+      "id": "pipeline-loop",
+      "name": "POST pipeline/run (por tenant)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 420],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REEMPLAZAR",
+          "name": "Supervendedor X-API-Key"
+        }
+      },
+      "notes": "Alternativa loop: 1 request HTTP por tenant"
+    }
+  ],
+  "connections": {
+    "Cada 12h": {
+      "main": [[{ "node": "Modo batch?", "type": "main", "index": 0 }]]
+    },
+    "Modo batch?": {
+      "main": [
+        [{ "node": "POST run-batch (recomendado 1000+)", "type": "main", "index": 0 }],
+        [{ "node": "GET tenants/active", "type": "main", "index": 0 }]
+      ]
+    },
+    "GET tenants/active": {
+      "main": [[{ "node": "Split tenants", "type": "main", "index": 0 }]]
+    },
+    "Split tenants": {
+      "main": [[{ "node": "POST pipeline/run (por tenant)", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "ED NET PRO" }, { "name": "Content" }, { "name": "Multi-Tenant" }]
+}

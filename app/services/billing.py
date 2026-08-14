@@ -15,6 +15,7 @@ Integración:
 """
 
 import logging
+import os
 from datetime import datetime, timezone
 from typing import Tuple
 
@@ -24,6 +25,9 @@ logger = logging.getLogger(__name__)
 
 # ── Tarifa ─────────────────────────────────────────────────────────────────────
 COSTO_LLAMADA_USD: float = 0.10   # $0.10 USD por lead cerrado / llamada exitosa
+CONTENT_PIPELINE_COST_USD: float = float(
+    os.environ.get("CONTENT_PIPELINE_COST_USD", "0.02")
+)  # ~$0.02 USD por pipeline con LLM (single_pass)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -109,6 +113,101 @@ def can_make_call(tenant_id: str) -> Tuple[bool, str]:
         return True, "activo"
 
     return False, "saldo_insuficiente"
+
+
+def can_run_content_pipeline(tenant_id: str) -> Tuple[bool, str]:
+    """
+    Verifica si el tenant puede ejecutar el pipeline de contenido (LLM + ads).
+
+    Returns:
+        (True, "trial"|"activo"|"legacy") o (False, motivo)
+    """
+    tenant = _get_tenant(tenant_id)
+
+    if not tenant:
+        logger.info(f"[billing] content pipeline '{tenant_id}' — modo legacy permitido")
+        return True, "legacy"
+
+    estado = tenant.get("estado", "")
+    if estado in ("suspendido", "cancelado"):
+        return False, estado
+
+    if _is_trial_active(tenant):
+        return True, "trial"
+
+    wallet = _get_wallet(tenant_id)
+    if not wallet:
+        return False, "saldo_insuficiente"
+
+    balance = float(wallet.get("balance_usd", 0))
+    if balance >= CONTENT_PIPELINE_COST_USD:
+        return True, "activo"
+
+    return False, "saldo_insuficiente"
+
+
+def deduct_content_pipeline_credit(
+    tenant_id: str,
+    referencia_id: str = "",
+    *,
+    llm_calls: int = 1,
+) -> dict:
+    """Cobra pipeline de contenido. No cobra si llm_calls=0 (skipped/cache)."""
+    if llm_calls <= 0:
+        return {"ok": True, "cobrado": 0.0, "razon": "sin_llm"}
+
+    tenant = _get_tenant(tenant_id)
+    if not tenant:
+        return {"ok": True, "cobrado": 0.0, "razon": "legacy"}
+
+    if _is_trial_active(tenant):
+        return {"ok": True, "cobrado": 0.0, "razon": "trial_gratuito"}
+
+    cost = CONTENT_PIPELINE_COST_USD
+    db = get_client()
+    if not db:
+        return {"ok": False, "razon": "db_error"}
+
+    ref = referencia_id or f"content-{tenant_id}-{datetime.now(timezone.utc).strftime('%Y%m%d')}"
+
+    try:
+        res = db.rpc("deducir_saldo", {
+            "p_tenant_id": tenant_id,
+            "p_monto_usd": cost,
+            "p_descripcion": "content pipeline (single_pass)",
+            "p_referencia_id": ref,
+        }).execute()
+        result = res.data[0] if isinstance(res.data, list) else res.data
+        if result and result.get("ok"):
+            return result
+    except Exception as exc:
+        logger.debug("[billing] RPC deducir_saldo no disponible: %s", exc)
+
+    wallet = _get_wallet(tenant_id)
+    if not wallet:
+        return {"ok": False, "razon": "wallet_not_found"}
+
+    balance = float(wallet.get("balance_usd", 0))
+    if balance < cost:
+        return {"ok": False, "razon": "saldo_insuficiente"}
+
+    new_balance = round(balance - cost, 4)
+    total_gastado = round(float(wallet.get("total_gastado", 0)) + cost, 4)
+    try:
+        db.table("wallets").update({
+            "balance_usd": new_balance,
+            "total_gastado": total_gastado,
+        }).eq("tenant_id", tenant_id).execute()
+        logger.info(
+            "[billing] content -$%s tenant=%s saldo=$%s",
+            cost, tenant_id, new_balance,
+        )
+        if new_balance < CONTENT_PIPELINE_COST_USD:
+            _suspend_tenant_if_empty(tenant_id, new_balance)
+        return {"ok": True, "cobrado": cost, "balance_nuevo": new_balance, "referencia_id": ref}
+    except Exception as exc:
+        logger.error("[billing] deduct content manual falló: %s", exc)
+        return {"ok": False, "razon": str(exc)}
 
 
 def deduct_credit(

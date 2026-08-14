@@ -1,45 +1,62 @@
 """
 app/routers/gupshup_handler.py — Single Tenant
 ────────────────────────────────────────────────────────────────────────────────
-Webhook de WhatsApp (Evolution API).
-Implementa el embudo gamificado:
+Webhook WhatsApp (Evolution API) con pipeline integrado:
 
-  Nivel 1 — Prospecto    : Zeus saluda, Athena califica
-  Nivel 2 — Calificado   : Athena confirma interés, Hermes entra
-  Nivel 3 — Negociando   : Hermes cierra o mueve a agenda
-  Nivel 4 — Agenda       : Se recogen fecha/hora y se crea cita
-  Nivel 5 — Cerrado      : Deal cerrado, post-venta
+  Catalog Bridge → Objection Killer → Hermes (ZOPA dinámica)
+  Hephaestus bajo demanda (catálogo/imágenes/PDF)
+  Business Evolver throttled (sin ejecución redundante por mensaje)
 """
 
-from fastapi import APIRouter, Request, BackgroundTasks
-from app.orchestrator import ZeusOrchestrator
-from app.funnel import FunnelEngine, FunnelStage
+from __future__ import annotations
+
+import time
+from datetime import datetime
+
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
+
 from app.config import settings
-import requests
+from app.security import verify_evolution_webhook
+from app.funnel import FunnelEngine, FunnelStage
+from app.orchestrator import ZeusOrchestrator
+from app.sales_pipeline import negotiate_response
+from app.services.whatsapp_sender import send_whatsapp_image, send_whatsapp_text
 
 router = APIRouter()
-zeus   = ZeusOrchestrator()
-
+zeus = ZeusOrchestrator()
 OWNER_ID = settings.OWNER_ID
 
-# Palabras clave que indican intención de agendar
 _KEYWORDS_AGENDA = {
     "cuando", "cuándo", "cita", "agenda", "reunion", "reunión",
     "disponible", "horario", "fecha", "hora", "día", "semana",
     "lunes", "martes", "miercoles", "jueves", "viernes",
 }
 
+# Throttle business_evolver: máx 1 vez cada 30 min por tenant
+_evolve_last_run: dict[str, float] = {}
+_EVOLVE_MIN_INTERVAL_S = 1800
 
-# ── Webhook principal ─────────────────────────────────────────────────────────
 
 @router.post("/webhook")
 async def handle_evolution(request: Request, background_tasks: BackgroundTasks):
+    verify_evolution_webhook(request)
+
     data = await request.json()
 
+    from app.services.processed_events import (
+        extract_whatsapp_event_id,
+        is_processed,
+        mark_processed,
+    )
+
+    event_id = extract_whatsapp_event_id(data)
+    if event_id and is_processed("whatsapp", event_id):
+        return {"status": "ok", "duplicate": True}
+
     if data.get("event") == "messages.upsert":
-        msg_data     = data.get("data", {})
-        remote_jid   = msg_data.get("key", {}).get("remoteJid", "")
-        from_me      = msg_data.get("key", {}).get("fromMe", False)
+        msg_data = data.get("data", {})
+        remote_jid = msg_data.get("key", {}).get("remoteJid", "")
+        from_me = msg_data.get("key", {}).get("fromMe", False)
         user_message = (
             msg_data.get("message", {}).get("conversation")
             or msg_data.get("message", {}).get("extendedTextMessage", {}).get("text")
@@ -47,21 +64,49 @@ async def handle_evolution(request: Request, background_tasks: BackgroundTasks):
 
         if user_message and not from_me and remote_jid:
             telefono = remote_jid.split("@")[0]
-            funnel   = FunnelEngine(owner_id=OWNER_ID)
-            stage    = funnel.get_stage(telefono)
+            funnel = FunnelEngine(owner_id=OWNER_ID)
+            stage = funnel.get_stage(telefono)
+
+            background_tasks.add_task(_touch_lead_activity, telefono)
+
+            # Hephaestus: catálogo / imágenes / PDF bajo demanda (cualquier etapa activa)
+            hepha_response = await _try_hephaestus(user_message, telefono, remote_jid)
+            if hepha_response:
+                background_tasks.add_task(_maybe_evolve_knowledge, OWNER_ID)
+                if event_id:
+                    mark_processed("whatsapp", event_id)
+                return {"status": "ok"}
 
             response_text = await _dispatch(telefono, user_message, stage, funnel)
 
             if response_text:
-                _send_whatsapp(remote_jid, response_text)
+                send_whatsapp_text(remote_jid, response_text)
 
-            # Evolucionar el knowledge en background tras cada mensaje
-            background_tasks.add_task(_try_evolve_knowledge, OWNER_ID)
+            background_tasks.add_task(_maybe_evolve_knowledge, OWNER_ID)
+
+    if event_id:
+        mark_processed("whatsapp", event_id)
 
     return {"status": "ok"}
 
 
-# ── Dispatch por etapa ────────────────────────────────────────────────────────
+async def _try_hephaestus(user_message: str, telefono: str, remote_jid: str) -> bool:
+    from app.agents.hephaestus_creator import HephaestusCreator
+
+    hepha = HephaestusCreator()
+    delivery = hepha.fulfill_catalog_request(user_message, telefono)
+    if not delivery:
+        return False
+
+    text = delivery.get("text", "")
+    image_url = delivery.get("image_url", "")
+
+    if image_url:
+        send_whatsapp_image(remote_jid, image_url, caption=text)
+    elif text:
+        send_whatsapp_text(remote_jid, text)
+    return True
+
 
 async def _dispatch(
     telefono: str,
@@ -85,29 +130,20 @@ async def _dispatch(
     if stage == FunnelStage.CALIFICADO:
         return await _handle_calificado(telefono, mensaje, funnel)
 
-    # PROSPECTO (default)
     return await _handle_prospecto(telefono, mensaje, funnel)
 
 
-# ── Handlers por etapa ────────────────────────────────────────────────────────
-
-async def _handle_prospecto(
-    telefono: str, mensaje: str, funnel: FunnelEngine
-) -> str:
-    """Nivel 1 — Zeus saluda, Athena evalúa el interés."""
+async def _handle_prospecto(telefono: str, mensaje: str, funnel: FunnelEngine) -> str:
     from app.agents.athena_analyst import AthenaAnalyst
-    from datetime import datetime
 
-    athena   = AthenaAnalyst()
+    athena = AthenaAnalyst()
     momentum = athena.get_sales_momentum(mensaje, datetime.now(), datetime.now())
-    status   = momentum["status"]
+    status = momentum["status"]
 
-    # Sin interés real → Zeus responde brevemente sin avanzar etapa
     if status == "CHURN_RISK":
         resp = zeus.process_message(telefono, mensaje, [], client_id="default")
         return resp["content"]
 
-    # Hay interés → avanzar a CALIFICADO
     level_msg = funnel.level_up_message(FunnelStage.CALIFICADO)
     funnel.advance_stage(
         telefono,
@@ -119,35 +155,22 @@ async def _handle_prospecto(
     return f"{level_msg}\n\n{resp['content']}" if level_msg else resp["content"]
 
 
-async def _handle_calificado(
-    telefono: str, mensaje: str, funnel: FunnelEngine
-) -> str:
-    """Nivel 2 → 3 — Hermes entra a negociar."""
-    from app.agents.hermes_negotiator import HermesNegotiator
-
+async def _handle_calificado(telefono: str, mensaje: str, funnel: FunnelEngine) -> str:
     level_msg = funnel.level_up_message(FunnelStage.NEGOCIANDO)
-    funnel.advance_stage(
-        telefono, FunnelStage.NEGOCIANDO,
-        notas="Hermes activado"
-    )
+    funnel.advance_stage(telefono, FunnelStage.NEGOCIANDO, notas="Hermes + Catalog Bridge activados")
 
-    hermes    = HermesNegotiator(target_price=500.0, reserve_price=300.0)
-    respuesta = hermes.generate_response({"action": "counter", "price": 450.0})
+    respuesta = negotiate_response(mensaje)
     return f"{level_msg}\n\n{respuesta}" if level_msg else respuesta
 
 
-async def _handle_negociando(
-    telefono: str, mensaje: str, funnel: FunnelEngine
-) -> str:
-    """Nivel 3 — Hermes cierra o mueve a agenda si detecta intención."""
-    from app.agents.hermes_negotiator import HermesNegotiator
-
+async def _handle_negociando(telefono: str, mensaje: str, funnel: FunnelEngine) -> str:
     palabras = set(mensaje.lower().split())
     if palabras & _KEYWORDS_AGENDA:
         level_msg = funnel.level_up_message(FunnelStage.AGENDA_PENDIENTE)
         funnel.advance_stage(
-            telefono, FunnelStage.AGENDA_PENDIENTE,
-            notas="Lead listo para agendar"
+            telefono,
+            FunnelStage.AGENDA_PENDIENTE,
+            notas="Lead listo para agendar",
         )
         return (
             f"{level_msg}\n\n"
@@ -158,15 +181,10 @@ async def _handle_negociando(
             "Escribeme algo como: _'martes en la tarde'_"
         )
 
-    hermes    = HermesNegotiator(target_price=500.0, reserve_price=300.0)
-    respuesta = hermes.generate_response({"action": "counter", "price": 450.0})
-    return respuesta
+    return negotiate_response(mensaje)
 
 
-async def _handle_agenda(
-    telefono: str, mensaje: str, funnel: FunnelEngine
-) -> str:
-    """Nivel 4 — Confirmar y crear la cita en Google Calendar."""
+async def _handle_agenda(telefono: str, mensaje: str, funnel: FunnelEngine) -> str:
     from app.services.google_calendar import crear_evento
 
     result = crear_evento(
@@ -180,8 +198,9 @@ async def _handle_agenda(
     if result.get("success"):
         level_msg = funnel.level_up_message(FunnelStage.CERRADO)
         funnel.advance_stage(
-            telefono, FunnelStage.CERRADO,
-            notas=f"Cita: {result.get('start_iso', '')}"
+            telefono,
+            FunnelStage.CERRADO,
+            notas=f"Cita: {result.get('start_iso', '')}",
         )
         return (
             f"{level_msg}\n\n"
@@ -196,14 +215,17 @@ async def _handle_agenda(
     )
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
 def _momentum_to_score(status: str) -> int:
     return {"HOT_LEAD": 9, "WARM_LEAD": 6, "CHURN_RISK": 2}.get(status, 5)
 
 
-def _try_evolve_knowledge(owner_id: str) -> None:
-    """Intenta evolucionar el knowledge en background (silencioso)."""
+def _maybe_evolve_knowledge(owner_id: str) -> None:
+    """Evolución throttled — evita llamadas redundantes por cada mensaje."""
+    now = time.time()
+    last = _evolve_last_run.get(owner_id, 0)
+    if now - last < _EVOLVE_MIN_INTERVAL_S:
+        return
+    _evolve_last_run[owner_id] = now
     try:
         from app.agents.business_evolver import evolve_business_logic
         evolve_business_logic(client_id=owner_id, tenant_id=owner_id)
@@ -211,24 +233,17 @@ def _try_evolve_knowledge(owner_id: str) -> None:
         print(f"[Evolver background] {e}")
 
 
-def _send_whatsapp(remote_jid: str, text: str) -> None:
-    """Envía mensaje via Evolution API. En dev imprime en consola."""
-    url      = settings.EVOLUTION_API_URL
-    api_key  = settings.EVOLUTION_API_KEY
-    instance = settings.EVOLUTION_INSTANCE
-
-    if not url or not api_key:
-        numero = remote_jid.split("@")[0]
-        print(f"[WhatsApp MOCK] → {numero}: {text[:120]}")
-        return
-
-    numero   = remote_jid.split("@")[0]
-    endpoint = f"{url.rstrip('/')}/message/sendText/{instance}"
-    headers  = {"apikey": api_key, "Content-Type": "application/json"}
-    payload  = {"number": numero, "text": text}
-
+def _touch_lead_activity(telefono: str) -> None:
+    """Actualiza updated_at para que followup no dispare en conversaciones activas."""
     try:
-        r = requests.post(endpoint, json=payload, headers=headers, timeout=10)
-        print(f"[WhatsApp] → {numero} | HTTP {r.status_code}")
-    except Exception as e:
-        print(f"[WhatsApp ERROR] {e}")
+        from datetime import timezone
+        from app.database.supabase_client import get_client
+
+        db = get_client()
+        if not db:
+            return
+        db.table("leads_crm").update({
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }).eq("tenant_id", OWNER_ID).eq("telefono", telefono).execute()
+    except Exception:
+        pass

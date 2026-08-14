@@ -495,27 +495,19 @@ def _get_client_config_from_supabase(client_id: str) -> Optional[dict]:
 
     Retorna el dict de la fila o None si no se encuentra / hay error.
     """
-    supabase_url = os.environ.get("SUPABASE_URL", "")
-    supabase_key = os.environ.get("SUPABASE_KEY", "")
-
-    if not supabase_url or not supabase_key:
-        return None
-
     try:
-        from supabase import create_client
-        db  = create_client(supabase_url, supabase_key)
-        res = (
-            db.table("clients_config")
-            .select("*")
-            .eq("client_id", client_id)
-            .eq("activo", True)
-            .limit(1)
-            .execute()
-        )
+        from app.database.supabase_client import get_client, get_backend
+        db = get_client()
+        if not db:
+            return None
+        q = db.table("clients_config").select("*").eq("client_id", client_id).limit(1)
+        if get_backend() == "supabase":
+            q = q.eq("activo", True)
+        res = q.execute()
         if res.data:
             return res.data[0]
     except Exception as e:
-        print(f"[PromptsFactory] Supabase no disponible para client='{client_id}': {e}")
+        print(f"[PromptsFactory] DB no disponible para client='{client_id}': {e}")
 
     return None
 

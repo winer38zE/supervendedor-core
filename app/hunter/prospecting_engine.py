@@ -9,7 +9,8 @@ import asyncio
 from datetime import datetime, timezone
 from typing import Optional
 import httpx
-from supabase import create_client, Client
+
+from app.database.supabase_client import get_client
 
 # ─────────────────────────────────────────────
 # Constantes de scoring
@@ -35,15 +36,9 @@ class ProspectingEngine:
             raise ValueError("tenant_id inválido")
         self.tenant_id = tenant_id
 
-        url = os.environ.get("SUPABASE_URL", "")
-        key = os.environ.get("SUPABASE_KEY", "")
-        self.db: Optional[Client] = None
-
-        if url and key:
-            try:
-                self.db = create_client(url, key)
-            except Exception as e:
-                print(f"⚠️ Hunter: No se pudo conectar a Supabase: {e}")
+        self.db = get_client()
+        if not self.db:
+            print("⚠️ Hunter: No hay conexión a base de datos (PocketBase/Supabase)")
 
         self.gmaps_key = os.environ.get("GOOGLE_MAPS_API_KEY", "")
         self.llm_key   = os.environ.get("GOOGLE_API_KEY", "") # Key para Gemini
@@ -150,12 +145,19 @@ class ProspectingEngine:
         normalizado = max(1, round((score / MAX_SCORE) * 10))
         return min(normalizado, 10)
 
-    def guardar_prospecto(self, prospecto: dict, lead_score: int) -> dict:
+    def guardar_prospecto(
+        self,
+        prospecto: dict,
+        lead_score: int,
+        shaka: Optional[dict] = None,
+    ) -> dict:
         if not self.db:
             return {"status": "sin_db"}
-        
+
         now = datetime.now(timezone.utc).isoformat()
-        
+        probability_score = (shaka or {}).get("probability_score", 0)
+        shaka_meta = shaka or {}
+
         # Upsert en prospectos_hunter
         prospecto_row = {
             "tenant_id": self.tenant_id,
@@ -171,10 +173,21 @@ class ProspectingEngine:
             "lugar_id": prospecto.get("lugar_id", ""),
             "ciudad": prospecto.get("ciudad", ""),
             "procesado": False,
+            "metadata": {
+                "probability_score": probability_score,
+                "shaka_channel": shaka_meta.get("channel"),
+                "shaka_opening_line": shaka_meta.get("opening_line"),
+            },
             "created_at": now,
         }
         res = self.db.table("prospectos_hunter").upsert(prospecto_row, on_conflict="tenant_id,lugar_id").execute()
         prospecto_id = res.data[0]["id"] if res.data else None
+
+        # Score final: blend Maps + Shaka probability (1-10)
+        if probability_score:
+            blended_score = max(1, min(10, round(lead_score * 0.5 + probability_score * 10 * 0.5)))
+        else:
+            blended_score = lead_score
 
         # Upsert en leads_crm
         lead_row = {
@@ -182,32 +195,49 @@ class ProspectingEngine:
             "nombre": prospecto["nombre_negocio"],
             "telefono": prospecto.get("telefono", ""),
             "empresa": prospecto["nombre_negocio"],
-            "lead_score": lead_score,
+            "lead_score": blended_score,
             "estado": "nuevo",
+            "fuente": "hunter",
+            "metadata": {
+                "probability_score": probability_score,
+                "shaka": shaka_meta,
+                "prospecto_hunter_id": prospecto_id,
+            },
             "created_at": now,
+            "updated_at": now,
         }
         self.db.table("leads_crm").upsert(lead_row, on_conflict="tenant_id,telefono").execute()
-        return {"status": "guardado"}
+        return {"status": "guardado", "probability_score": probability_score, "lead_score": blended_score}
 
     # ─────────────────────────────────────────
     # 4. Pipeline Inteligente (Actualizado)
     # ─────────────────────────────────────────
     async def ejecutar_campana(self, query: str, ciudad: str, max_results: int = 20) -> dict:
+        from app.agents.shaka_quantum_prospector import ShakaQuantumProspector
+
         print(f"🔍 [{self.tenant_id}] Iniciando campaña: '{query}' en {ciudad}")
         prospectos = await self.buscar_en_google_maps(query, ciudad, max_results)
-        
+        shaka = ShakaQuantumProspector()
+
         resultados = []
         for p in prospectos:
-            # IA INTENT CHECK: ¿Vale la pena este lead?
-            es_high_intent = await self.verificar_intencion(p['nombre_negocio'], p['categoria'])
-            
-            # Cálculo de score
+            es_high_intent = await self.verificar_intencion(p["nombre_negocio"], p["categoria"])
+
             score = self.calificar_lead(p)
             if es_high_intent:
-                score = min(score + 2, 10) # Bonus de IA
-            
-            self.guardar_prospecto(p, score)
-            resultados.append({"nombre": p["nombre_negocio"], "lead_score": score, "intent": es_high_intent})
+                score = min(score + 2, 10)
+
+            shaka_result = shaka.score_hunter_lead(p, score)
+            save_result = self.guardar_prospecto(p, score, shaka=shaka_result)
+
+            resultados.append({
+                "nombre": p["nombre_negocio"],
+                "lead_score": save_result.get("lead_score", score),
+                "probability_score": shaka_result.get("probability_score"),
+                "shaka_channel": shaka_result.get("channel"),
+                "opening_line": shaka_result.get("opening_line"),
+                "intent": es_high_intent,
+            })
 
         return {"status": "completado", "total": len(resultados), "detalles": resultados}
 
