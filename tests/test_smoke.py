@@ -86,6 +86,21 @@ def test_whatsapp_webhook_idempotent():
     assert r2.json().get("duplicate") is True
 
 
+def test_whatsapp_webhook_v2_returns_200():
+    payload = {
+        "event": "messages.upsert",
+        "data": {
+            "key": {"remoteJid": "573001112233@s.whatsapp.net", "fromMe": False, "id": "v2-msg-001"},
+            "message": {"conversation": "busca enterizos en inventario"},
+        },
+    }
+    r = client.post("/webhook/whatsapp", json=payload)
+    assert r.status_code == 200
+    body = r.json()
+    assert body.get("status") == "ok"
+    assert body.get("queued") is True
+
+
 def test_vapi_webhook_returns_200():
     payload = {
         "message": {
@@ -95,6 +110,52 @@ def test_vapi_webhook_returns_200():
     }
     r = client.post("/vapi/webhook", json=payload)
     assert r.status_code == 200
+    tools = r.json().get("assistant", {}).get("model", {}).get("tools", [])
+    tool_names = {t.get("function", {}).get("name") for t in tools}
+    assert "buscar_productos_inventario" in tool_names
+    assert "consultar_ventas_pocketbase" in tool_names
+
+
+def test_vapi_tools_webhook_inventario(monkeypatch):
+    def fake_invoke(tool_name, arguments):
+        if tool_name == "buscar_productos_inventario":
+            return {
+                "ok": True,
+                "productos": [
+                    {
+                        "titulo": "Enterizo deportivo test",
+                        "precio_reventa_cop": 75000,
+                        "stock_estimado": "disponible",
+                    }
+                ],
+            }
+        return {"ok": False}
+
+    monkeypatch.setattr(
+        "app.services.vapi_tools_service._invoke_backend_tool",
+        fake_invoke,
+    )
+
+    payload = {
+        "message": {
+            "type": "tool-calls",
+            "call": {"id": "call-tool-001", "metadata": {"client_id": "default"}},
+            "toolCallList": [
+                {
+                    "id": "toolu_test_001",
+                    "name": "buscar_productos_inventario",
+                    "parameters": {"query": "enterizo", "limit": 3},
+                }
+            ],
+        }
+    }
+    r = client.post("/vapi/tools/webhook", json=payload)
+    assert r.status_code == 200
+    results = r.json().get("results", [])
+    assert len(results) == 1
+    assert results[0]["toolCallId"] == "toolu_test_001"
+    assert "Enterizo deportivo test" in results[0]["result"]
+    assert "75" in results[0]["result"]
 
 
 def test_ads_status_returns_200():

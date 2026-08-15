@@ -10,6 +10,12 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from app.services.google_calendar import crear_evento
 from app.config import settings
 from app.security import verify_vapi_webhook
+from app.services.vapi_tools_service import (
+    build_vapi_tool_results_async,
+    extract_tool_call_list,
+    get_vapi_tool_definitions,
+    parse_tool_call,
+)
 from app.agents.prompts_factory import get_system_prompt
 
 router = APIRouter(prefix="/vapi", tags=["Vapi Voice"])
@@ -32,86 +38,59 @@ def _get_label(client_id: str) -> dict:
             return label
     return _BUSINESS_LABELS["default"]
 
-def handle_tool_call(tool_name: str, raw_args: str | dict, client_id: str) -> str:
+def handle_agendar_cita(args: dict, client_id: str) -> str:
+    """Agenda cita vía Google Calendar — tool Vapi `agendar_cita`."""
     label = _get_label(client_id)
+    nombre = args.get("nombre", "cliente")
+    fecha = args.get("fecha", "")
+    hora = args.get("hora", "")
 
-    if tool_name == "agendar_cita":
-        try:
-            args = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
-            nombre = args.get("nombre", "cliente")
-            fecha = args.get("fecha", "")
-            hora = args.get("hora", "")
-        except (json.JSONDecodeError, AttributeError):
-            return "No pude procesar los datos de la cita. Por favor repite nombre, fecha y hora."
+    if not fecha or not hora:
+        return "Necesito la fecha y la hora para agendar. ¿Me los confirmas?"
 
-        if not fecha or not hora:
-            return "Necesito la fecha y la hora para agendar. ¿Me los confirmas?"
+    titulo = f"{label['emoji']} {label['accion'].capitalize()} — {nombre}"
+    result = crear_evento(
+        nombre=nombre,
+        fecha=fecha,
+        hora=hora,
+        titulo=titulo,
+        client_id=client_id,
+    )
 
-        titulo = f"{label['emoji']} {label['accion'].capitalize()} — {nombre}"
-        result = crear_evento(
-            nombre=nombre,
-            fecha=fecha,
-            hora=hora,
-            titulo=titulo,
-            client_id=client_id,
-        )
-
-        if not result["success"]:
-            print(f"[Calendar ERROR] {result.get('error')}")
-            return (
-                f"Tuve un problema al guardar la cita en el calendario: {result.get('error')}. "
-                "Por favor llama de nuevo o escríbenos por WhatsApp."
-            )
-
-        modo = " [simulado]" if result.get("mock") else ""
-        print(f"[Calendar OK{modo}] client='{client_id}' | {nombre} @ {result['start_iso']} | id={result['event_id']}")
-        
+    if not result["success"]:
+        print(f"[Calendar ERROR] {result.get('error')}")
         return (
-            f"{label['emoji']} ¡Todo listo! Tu {label['accion']} en la {label['negocio']} "
-            f"quedó guardada para el {fecha} a las {hora}, a nombre de {nombre}. "
-            f"Recibirás un recordatorio. ¿Hay algo más en que pueda ayudarte?"
+            f"Tuve un problema al guardar la cita en el calendario: {result.get('error')}. "
+            "Por favor llama de nuevo o escríbenos por WhatsApp."
         )
 
-    return f"La herramienta '{tool_name}' no está disponible en este momento."
+    modo = " [simulado]" if result.get("mock") else ""
+    print(f"[Calendar OK{modo}] client='{client_id}' | {nombre} @ {result['start_iso']} | id={result['event_id']}")
+
+    return (
+        f"{label['emoji']} ¡Todo listo! Tu {label['accion']} en la {label['negocio']} "
+        f"quedó guardada para el {fecha} a las {hora}, a nombre de {nombre}. "
+        f"Recibirás un recordatorio. ¿Hay algo más en que pueda ayudarte?"
+    )
+
+
+def handle_tool_call(tool_name: str, raw_args: str | dict, client_id: str) -> str:
+    """Compatibilidad — delega al servicio central de tools Vapi."""
+    from app.services.vapi_tools_service import execute_tool
+
+    if isinstance(raw_args, str):
+        try:
+            args = json.loads(raw_args) if raw_args.strip() else {}
+        except json.JSONDecodeError:
+            args = {}
+    else:
+        args = raw_args or {}
+
+    return execute_tool(tool_name, args, client_id=client_id)
+
 
 def _build_assistant_tools(client_id: str) -> list:
-    label = _get_label(client_id)
-    webhook_url = os.environ.get("PUBLIC_URL", "").rstrip("/") + "/vapi/webhook"
-
-    tool = {
-        "type": "function",
-        "function": {
-            "name": "agendar_cita",
-            "description": (
-                f"Agenda una {label['accion']} en la {label['negocio']}. "
-                f"Úsala SOLO cuando el cliente haya confirmado explícitamente su nombre, "
-                f"la fecha y la hora."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "nombre": {
-                        "type": "string",
-                        "description": "Nombre completo del cliente.",
-                    },
-                    "fecha": {
-                        "type": "string",
-                        "description": "Fecha de la cita (YYYY-MM-DD o descripción natural como 'mañana').",
-                    },
-                    "hora": {
-                        "type": "string",
-                        "description": "Hora de la cita en formato HH:MM o descripción natural como '3 de la tarde'.",
-                    },
-                },
-                "required": ["nombre", "fecha", "hora"],
-            },
-        },
-    }
-
-    if os.environ.get("PUBLIC_URL"):
-        tool["server"] = {"url": webhook_url}
-
-    return [tool]
+    return get_vapi_tool_definitions(include_agenda=True)
 
 def _extract_client_id(request: Request, message: dict) -> str:
     client_id = request.headers.get("x-client-id")
@@ -248,22 +227,16 @@ async def vapi_webhook(request: Request, background_tasks: BackgroundTasks):
 
         if message_type in ("tool-calls", "tool-call"):
             client_id = _extract_client_id(request, message)
-            if message_type == "tool-calls":
-                tool_call_list = message.get("toolCallList", [])
-            else:
-                single = message.get("toolCall") or message.get("toolCallList", [{}])[0]
-                tool_call_list = [single]
+            tool_call_list = extract_tool_call_list(message)
 
-            results = []
             for tool_call in tool_call_list:
-                tool_id = tool_call.get("id", "")
-                function = tool_call.get("function", {})
-                tool_name = function.get("name", "")
-                raw_args = function.get("arguments", "{}")
-
+                _, tool_name, _ = parse_tool_call(tool_call)
                 print(f"[Vapi] tool-call | tool='{tool_name}' | client='{client_id}'")
-                result_text = handle_tool_call(tool_name, raw_args, client_id)
-                results.append({"toolCallId": tool_id, "result": result_text})
+
+            results = await build_vapi_tool_results_async(
+                tool_call_list,
+                client_id=client_id,
+            )
 
             if event_id:
                 mark_processed("vapi", event_id)
@@ -311,3 +284,39 @@ async def vapi_webhook(request: Request, background_tasks: BackgroundTasks):
     except Exception as e:
         print(f"Error Vapi: {e}")
         return {"status": "Error"}
+
+
+@router.post("/tools/webhook")
+async def vapi_tools_webhook(request: Request):
+    """
+    Server URL dedicado para tools Vapi (inventario + ventas + agenda).
+
+    Configura en Vapi: tool.server.url = {PUBLIC_URL}/vapi/tools/webhook
+
+    Acepta message.type = tool-calls | tool-call y responde:
+      { "results": [ { "toolCallId": "...", "result": "..." } ] }
+    """
+    verify_vapi_webhook(request)
+
+    try:
+        data = await request.json()
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="JSON inválido")
+
+    message = data.get("message") or data
+    msg_type = message.get("type", "")
+
+    if msg_type not in ("tool-calls", "tool-call"):
+        return {"status": "ignored", "reason": f"type={msg_type}"}
+
+    client_id = _extract_client_id(request, message)
+    tool_call_list = extract_tool_call_list(message)
+
+    if not tool_call_list:
+        return {"results": []}
+
+    results = await build_vapi_tool_results_async(
+        tool_call_list,
+        client_id=client_id,
+    )
+    return {"results": results}

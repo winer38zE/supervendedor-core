@@ -7,6 +7,7 @@ import logging
 # ✅ IMPORTA LOS ROUTERS
 from app.routers import vapi_handler
 from app.routers import gupshup_handler
+from app.routers import whatsapp_handler
 from app.routers import hunter_router
 from app.routers import cierre_router
 from app.routers import centinela_router
@@ -49,6 +50,7 @@ app = FastAPI(
 
 app.include_router(vapi_handler.router, tags=["Voice (Vapi)"])
 app.include_router(gupshup_handler.router, prefix="/whatsapp", tags=["WhatsApp"])
+app.include_router(whatsapp_handler.router, tags=["WhatsApp Webhook"])
 app.include_router(hunter_router.router, prefix="/hunter", tags=["Hunter"])
 app.include_router(cierre_router.router, prefix="/cierre", tags=["Cierre"])
 app.include_router(centinela_router.router, prefix="/centinela", tags=["Centinela"])
