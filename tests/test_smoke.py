@@ -98,7 +98,10 @@ def test_whatsapp_webhook_v2_returns_200():
     assert r.status_code == 200
     body = r.json()
     assert body.get("status") == "ok"
+<<<<<<< HEAD
     assert body.get("queued") is True
+=======
+>>>>>>> 5abd626cce5c7c9a25b79377954793361c2622a2
 
 
 def test_vapi_webhook_returns_200():
@@ -132,7 +135,11 @@ def test_vapi_tools_webhook_inventario(monkeypatch):
         return {"ok": False}
 
     monkeypatch.setattr(
+<<<<<<< HEAD
         "app.services.vapi_tools_service._invoke_backend_tool",
+=======
+        "app.services.platform_tools_service.call_tool_sync",
+>>>>>>> 5abd626cce5c7c9a25b79377954793361c2622a2
         fake_invoke,
     )
 
@@ -155,7 +162,10 @@ def test_vapi_tools_webhook_inventario(monkeypatch):
     assert len(results) == 1
     assert results[0]["toolCallId"] == "toolu_test_001"
     assert "Enterizo deportivo test" in results[0]["result"]
+<<<<<<< HEAD
     assert "75" in results[0]["result"]
+=======
+>>>>>>> 5abd626cce5c7c9a25b79377954793361c2622a2
 
 
 def test_ads_status_returns_200():

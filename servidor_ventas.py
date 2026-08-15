@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """
+<<<<<<< HEAD
 servidor_ventas.py — Servidor MCP (stdio) para Super Vendedor ED NET PRO.
 
 Expone herramientas para que un host MCP (Cursor, Claude Desktop, etc.)
@@ -18,21 +19,33 @@ Config Cursor (~/.cursor/mcp.json o .cursor/mcp.json):
         }
       }
     }
+=======
+servidor_ventas.py — Punto de entrada MCP (stdio) ED NET PRO 3.0
+
+Delega la lógica de inventario/ventas a app.services.platform_tools_service.
+Ejecutar: python servidor_ventas.py
+>>>>>>> 5abd626cce5c7c9a25b79377954793361c2622a2
 """
 
 from __future__ import annotations
 
 import asyncio
+<<<<<<< HEAD
 import json
 import logging
 import os
+=======
+>>>>>>> 5abd626cce5c7c9a25b79377954793361c2622a2
 import sys
 from pathlib import Path
 from typing import Any
 
+<<<<<<< HEAD
 import httpx
 
 # ── Path del proyecto (imports app.* solo como fallback) ─────────────────────
+=======
+>>>>>>> 5abd626cce5c7c9a25b79377954793361c2622a2
 ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -41,6 +54,7 @@ from dotenv import load_dotenv
 
 load_dotenv(ROOT / ".env")
 
+<<<<<<< HEAD
 # ── Logging seguro: SOLO stderr (stdout reservado a JSON-RPC MCP) ─────────────
 logger = logging.getLogger("servidor_ventas")
 logger.setLevel(logging.INFO)
@@ -506,10 +520,36 @@ def buscar_productos_inventario_tool(
         result.get("fuente", "n/a"),
     )
     return json.dumps(result, ensure_ascii=False, indent=2)
+=======
+from mcp.server import MCPServer
+
+from app.services.platform_tools_service import (
+    buscar_productos_inventario,
+    call_tool_sync,
+    consultar_ventas_pocketbase,
+)
+
+mcp = MCPServer("super-vendedor-ventas")
+
+
+@mcp.tool(
+    name="buscar_productos_inventario",
+    description=(
+        "Consulta inventario y precios COP del catálogo Shein/Nyx Bridge vía FastAPI ED NET PRO."
+    ),
+)
+async def buscar_productos_inventario_tool(
+    query: str,
+    categoria: str = "",
+    limit: int = 5,
+) -> dict[str, Any]:
+    return await buscar_productos_inventario(query, categoria=categoria, limit=limit)
+>>>>>>> 5abd626cce5c7c9a25b79377954793361c2622a2
 
 
 @mcp.tool(
     name="consultar_ventas_pocketbase",
+<<<<<<< HEAD
     description=(
         "Consulta ventas cerradas y métricas comerciales en tiempo real desde PocketBase. "
         "Invocar cuando necesites: ingresos del día/semana, ventas por producto, "
@@ -540,6 +580,24 @@ async def main() -> None:
         _supervendedor_base(),
         _pocketbase_base(),
     )
+=======
+    description="Consulta ventas, ingresos y ticket promedio desde PocketBase.",
+)
+async def consultar_ventas_pocketbase_tool(
+    limit: int = 5,
+    estado: str = "",
+    producto: str = "",
+) -> dict[str, Any]:
+    return await consultar_ventas_pocketbase(limit=limit, estado=estado, producto=producto)
+
+
+def call_tool(tool_name: str, arguments: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Dispatcher síncrono para Vapi, WhatsApp y scripts."""
+    return call_tool_sync(tool_name, arguments)
+
+
+async def main() -> None:
+>>>>>>> 5abd626cce5c7c9a25b79377954793361c2622a2
     await mcp.run_stdio_async()
 
 

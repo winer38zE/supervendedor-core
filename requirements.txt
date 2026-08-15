@@ -25,4 +25,9 @@ pytrends>=4.9.2
 facebook-business>=19.0.0
 mem0ai>=0.1.0
 sqlalchemy>=2.0.0
+<<<<<<< HEAD
 mcp>=2.0.0
+=======
+mcp>=2.0.0
+sentry-sdk>=2.0.0
+>>>>>>> 5abd626cce5c7c9a25b79377954793361c2622a2
