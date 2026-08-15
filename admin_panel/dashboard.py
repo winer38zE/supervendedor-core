@@ -7,6 +7,7 @@ import plotly.express as px
 import streamlit as st
 
 from pb_store import fetch_ventas_dataframe, insert_venta
+from api_store import fetch_live_channels_snapshot
 from ui import render_ventas_gestion_table, require_pocketbase, show_pb_notice
 
 st.set_page_config(
@@ -29,6 +30,29 @@ st.markdown(
     [data-testid="stMetricValue"] {
         font-size: 2rem !important;
         color: #00FF94 !important;
+    }
+    .channel-card-ok {
+        border-left: 4px solid #00FF94;
+        background: #14241c;
+        padding: 14px 16px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+    }
+    .channel-card-warn {
+        border-left: 4px solid #FF4B4B;
+        background: #241414;
+        padding: 14px 16px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+    }
+    .channel-title {
+        font-size: 1.05rem;
+        font-weight: 600;
+        margin-bottom: 6px;
+    }
+    .channel-meta {
+        font-size: 0.85rem;
+        color: #AAAAAA;
     }
 </style>
 """,
@@ -63,6 +87,66 @@ def _sync_monto_simulador() -> None:
     producto = st.session_state.get("sim_producto")
     if producto in PRODUCTOS_PRECIOS:
         st.session_state.sim_monto = PRODUCTOS_PRECIOS[producto]
+
+
+def _render_canales_en_vivo() -> None:
+    """Monitoreo de webhooks WhatsApp (Evolution) y Vapi conectados a ED NET PRO 3.0."""
+    st.subheader("📡 Canales en vivo · WhatsApp & Vapi")
+    st.caption("Estado consultado vía FastAPI `/api/v1/metrics/overview` y módulos MCP.")
+
+    refresh = st.button("🔄 Actualizar estado de canales", key="refresh_channels")
+    if refresh:
+        st.cache_data.clear()
+
+    snapshot = fetch_live_channels_snapshot()
+    show_pb_notice(snapshot.get("notice_level", "none"), snapshot.get("notice_msg", ""))
+
+    top1, top2, top3, top4 = st.columns(4)
+    with top1:
+        st.metric(
+            "🌐 API FastAPI",
+            "ONLINE" if snapshot["api_ok"] else "OFFLINE",
+            delta=snapshot["api_base"],
+        )
+    with top2:
+        st.metric("📦 Catálogo (muestra)", snapshot["catalogo_productos"])
+    with top3:
+        st.metric(
+            "💰 Ventas API",
+            f"$ {snapshot['ventas_api_ingresos']:,.0f}",
+            delta=f"{snapshot['ventas_api_total']} registros",
+        )
+    with top4:
+        st.metric("🏷️ Plataforma", f"v{snapshot['platform_version']}")
+
+    cols = st.columns(3)
+    for col, card in zip(cols, snapshot.get("cards", [])):
+        css_class = "channel-card-ok" if card.get("status_ok") else "channel-card-warn"
+        status_color = "#00FF94" if card.get("status_ok") else "#FF4B4B"
+        webhooks_html = "<br>".join(f"• {url}" for url in card.get("webhooks", [])[:3])
+        with col:
+            st.markdown(
+                f"""
+<div class="{css_class}">
+  <div class="channel-title">{card.get('icon', '')} {card.get('title', '')}</div>
+  <div style="color:{status_color}; font-weight:700;">{card.get('status_label', '—')}</div>
+  <div class="channel-meta">Instancia: {card.get('instance', '—')}</div>
+  <div class="channel-meta">Módulo: {card.get('module', '—')}</div>
+  <div class="channel-meta">Webhooks:<br>{webhooks_html}</div>
+  <div class="channel-meta">Última consulta: {card.get('checked_at', '—')}</div>
+</div>
+""",
+                unsafe_allow_html=True,
+            )
+
+    with st.expander("Detalle técnico (JSON)"):
+        st.json(
+            {
+                "health": snapshot.get("health"),
+                "canales": (snapshot.get("overview") or {}).get("canales"),
+                "marketing": (snapshot.get("overview") or {}).get("marketing"),
+            }
+        )
 
 
 def _render_simulador_ventas() -> None:
@@ -126,6 +210,10 @@ with col3:
     st.metric("💎 TICKET PROMEDIO", f"$ {ticket_promedio:,.0f} COP")
 with col4:
     st.metric("🔥 ESTADO SISTEMA", "ONLINE", delta="Activo")
+
+st.divider()
+
+_render_canales_en_vivo()
 
 st.divider()
 
