@@ -292,12 +292,9 @@ async def vapi_tools_webhook(request: Request):
     Server URL dedicado para tools Vapi (inventario + ventas + agenda).
 
     Configura en Vapi: tool.server.url = {PUBLIC_URL}/vapi/tools/webhook
-<<<<<<< HEAD
 
     Acepta message.type = tool-calls | tool-call y responde:
       { "results": [ { "toolCallId": "...", "result": "..." } ] }
-=======
->>>>>>> 5abd626cce5c7c9a25b79377954793361c2622a2
     """
     verify_vapi_webhook(request)
 

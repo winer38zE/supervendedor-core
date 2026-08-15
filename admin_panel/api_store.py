@@ -36,7 +36,10 @@ def _public_base() -> str:
 
 def _api_headers() -> dict[str, str]:
     headers = {"Accept": "application/json"}
-    api_key = os.getenv("INTERNAL_API_KEY", "").strip()
+    api_key = (
+        st.secrets.get("INTERNAL_API_KEY", "")
+        or os.getenv("INTERNAL_API_KEY", "")
+    ).strip()
     if api_key:
         headers["X-API-Key"] = api_key
     return headers

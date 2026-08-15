@@ -17,10 +17,8 @@ from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
-<<<<<<< HEAD
 # ── Definiciones OpenAI-style para assistant-request ─────────────────────────
-=======
->>>>>>> 5abd626cce5c7c9a25b79377954793361c2622a2
+
 
 def _tool_server_url(path: str = "/vapi/tools/webhook") -> Optional[str]:
     base = os.environ.get("PUBLIC_URL", "").rstrip("/")
@@ -119,8 +117,8 @@ def get_vapi_tool_definitions(*, include_agenda: bool = True) -> list[dict[str, 
     return tools
 
 
-<<<<<<< HEAD
 # ── Parsing tool-calls (formatos Vapi v1/v2) ─────────────────────────────────
+
 
 def parse_tool_call(tool_call: dict[str, Any]) -> tuple[str, str, dict[str, Any]]:
     """
@@ -138,14 +136,6 @@ def parse_tool_call(tool_call: dict[str, Any]) -> tuple[str, str, dict[str, Any]
         or tool_call.get("name")
         or ""
     ).strip()
-=======
-def parse_tool_call(tool_call: dict[str, Any]) -> tuple[str, str, dict[str, Any]]:
-    """Normaliza un tool call de Vapi (formatos function.* y name/parameters)."""
-    tool_id = str(tool_call.get("id") or tool_call.get("toolCallId") or "")
-
-    function = tool_call.get("function") or {}
-    tool_name = (function.get("name") or tool_call.get("name") or "").strip()
->>>>>>> 5abd626cce5c7c9a25b79377954793361c2622a2
 
     raw_args = (
         function.get("arguments")
@@ -180,23 +170,13 @@ def extract_tool_call_list(message: dict[str, Any]) -> list[dict[str, Any]]:
     return []
 
 
-<<<<<<< HEAD
 # ── Backend (MCP tools / FastAPI / PocketBase) ────────────────────────────────
 
-def _invoke_backend_tool(tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
-    try:
-        import servidor_ventas as mcp_tools
 
-        return mcp_tools.call_tool(tool_name, arguments)
-    except Exception as exc:
-        logger.exception("[VapiTools] Error invocando %s", tool_name)
-        return {"ok": False, "error": str(exc)}
-=======
 def _invoke_backend_tool(tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     from app.services.platform_tools_service import call_tool_sync
 
     return call_tool_sync(tool_name, arguments)
->>>>>>> 5abd626cce5c7c9a25b79377954793361c2622a2
 
 
 def _format_inventario_voz(result: dict[str, Any]) -> str:
@@ -250,13 +230,7 @@ def _format_ventas_voz(result: dict[str, Any]) -> str:
 
 
 def execute_tool(tool_name: str, args: dict[str, Any], *, client_id: str = "default") -> str:
-<<<<<<< HEAD
-    """
-    Ejecuta una tool y devuelve texto listo para que Vapi lo lea al usuario.
-    """
-=======
     """Ejecuta una tool y devuelve texto listo para que Vapi lo lea al usuario."""
->>>>>>> 5abd626cce5c7c9a25b79377954793361c2622a2
     logger.info("[VapiTools] execute tool=%r client=%r args=%s", tool_name, client_id, args)
 
     if tool_name == "buscar_productos_inventario":
@@ -303,11 +277,7 @@ def build_vapi_tool_results(
         tool_id, tool_name, args = parse_tool_call(tool_call)
         try:
             result_text = execute_tool(tool_name, args, client_id=client_id)
-<<<<<<< HEAD
-        except Exception as exc:
-=======
         except Exception:
->>>>>>> 5abd626cce5c7c9a25b79377954793361c2622a2
             logger.exception("[VapiTools] fallo tool=%s", tool_name)
             result_text = f"Ocurrió un error ejecutando {tool_name}. Intenta de nuevo."
         results.append({"toolCallId": tool_id, "result": result_text})
@@ -325,7 +295,6 @@ async def build_vapi_tool_results_async(
         tool_call_list,
         client_id=client_id,
     )
-<<<<<<< HEAD
 
 
 def vapi_tools_response(
@@ -337,5 +306,3 @@ def vapi_tools_response(
     return {
         "results": build_vapi_tool_results(tool_call_list, client_id=client_id),
     }
-=======
->>>>>>> 5abd626cce5c7c9a25b79377954793361c2622a2
