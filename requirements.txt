@@ -26,3 +26,4 @@ facebook-business>=19.0.0
 mem0ai>=0.1.0
 sqlalchemy>=2.0.0
 mcp>=2.0.0
+sentry-sdk>=2.0.0
