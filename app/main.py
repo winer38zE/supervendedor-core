@@ -10,9 +10,9 @@ from __future__ import annotations
 import logging
 import os
 
+from fastapi import FastAPI, HTTPException
 import sentry_sdk
 import uvicorn
-from fastapi import FastAPI, HTTPException
 
 from app.config import settings
 from app.core.lifecycle import on_shutdown, on_startup
@@ -40,6 +40,7 @@ app = FastAPI(
     openapi_url=None if _is_production else "/openapi.json",
 )
 
+# Registra todos los routers (WhatsApp, Vapi, Cierre, etc.)
 register_platform_routers(app)
 
 

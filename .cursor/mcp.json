@@ -1,7 +1,11 @@
 {
   "mcpServers": {
     "super-vendedor-ventas": {
+<<<<<<< HEAD
+      "command": ".venv/Scripts/python.exe",
+=======
       "command": ".venv/bin/python",
+>>>>>>> 5abd626cce5c7c9a25b79377954793361c2622a2
       "args": ["servidor_ventas.py"],
       "cwd": "${workspaceFolder}",
       "env": {
