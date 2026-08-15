@@ -131,7 +131,7 @@ def test_vapi_tools_webhook_inventario(monkeypatch):
         return {"ok": False}
 
     monkeypatch.setattr(
-        "app.services.vapi_tools_service._invoke_backend_tool",
+        "app.services.platform_tools_service.call_tool_sync",
         fake_invoke,
     )
 

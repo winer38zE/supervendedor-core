@@ -149,19 +149,19 @@ def _format_ventas(result: dict[str, Any]) -> str:
 
 
 def procesar_mensaje_ia(user_message: str) -> str | None:
-    """Routing inventario/ventas vía servidor_ventas.call_tool."""
-    import servidor_ventas
+    """Routing inventario/ventas vía platform_tools_service."""
+    from app.services.platform_tools_service import call_tool_sync
 
     route = _detect_route(user_message)
     if route == "inventario":
-        result = servidor_ventas.call_tool(
+        result = call_tool_sync(
             "buscar_productos_inventario",
             {"query": user_message.strip(), "limit": 5},
         )
         return _format_inventario(result)
 
     if route == "ventas":
-        result = servidor_ventas.call_tool(
+        result = call_tool_sync(
             "consultar_ventas_pocketbase",
             {"limit": 5},
         )

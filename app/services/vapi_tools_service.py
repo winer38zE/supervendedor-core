@@ -156,13 +156,9 @@ def extract_tool_call_list(message: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _invoke_backend_tool(tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
-    try:
-        import servidor_ventas as mcp_tools
+    from app.services.platform_tools_service import call_tool_sync
 
-        return mcp_tools.call_tool(tool_name, arguments)
-    except Exception as exc:
-        logger.exception("[VapiTools] Error invocando %s", tool_name)
-        return {"ok": False, "error": str(exc)}
+    return call_tool_sync(tool_name, arguments)
 
 
 def _format_inventario_voz(result: dict[str, Any]) -> str:
