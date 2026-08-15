@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "super-vendedor-ventas": {
+      "command": ".venv/bin/python",
+      "args": ["servidor_ventas.py"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "POCKETBASE_URL": "http://178.105.48.103:8090",
+        "VENTAS_COLLECTION": "ventas",
+        "SUPERVENDEDOR_URL": "http://127.0.0.1:8000"
+      }
+    }
+  }
+}

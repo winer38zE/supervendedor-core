@@ -103,15 +103,31 @@ def list_records(
     per_page: int = 50,
     quiet: bool = False,
 ) -> list[dict]:
-    params: dict[str, Any] = {"page": page, "perPage": per_page, "sort": sort}
-    if filter_expr:
-        params["filter"] = filter_expr
+    base_params: dict[str, Any] = {"page": page, "perPage": per_page}
+    param_variants: list[dict[str, Any]] = []
+    if sort:
+        param_variants.append({**base_params, "sort": sort})
+        if sort != "-@created":
+            param_variants.append({**base_params, "sort": "-@created"})
+    param_variants.append(dict(base_params))
 
-    r = pb_request("GET", f"/api/collections/{collection}/records", params=params)
-    if r.status_code != 200:
-        _log_pb_error("list", collection, r.status_code, r.text, quiet=quiet)
-        return []
-    return r.json().get("items", [])
+    path = f"/api/collections/{collection}/records"
+    last_status = 0
+    last_text = ""
+
+    for params in param_variants:
+        if filter_expr:
+            params = {**params, "filter": filter_expr}
+        r = pb_request("GET", path, params=params)
+        if r.status_code == 200:
+            return r.json().get("items", [])
+        last_status = r.status_code
+        last_text = r.text
+        if r.status_code not in (400, 422):
+            break
+
+    _log_pb_error("list", collection, last_status, last_text, quiet=quiet)
+    return []
 
 
 def collection_exists(collection: str) -> bool:

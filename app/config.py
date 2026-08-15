@@ -11,16 +11,28 @@ logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
-    # ── Entorno ───────────────────────────────────────────────────────────────
+    # ── ED NET PRO 3.0 — Core ─────────────────────────────────────────────────
     ENV: str = os.getenv("ENV", "development")
     INTERNAL_API_KEY: str = os.getenv("INTERNAL_API_KEY", "")
     MASTER_KEY: str = os.getenv("MASTER_KEY", "")
+    OWNER_ID: str = os.getenv("OWNER_ID", "edwuar")
+    PORT: int = int(os.getenv("PORT", "8000"))
+    PUBLIC_URL: str = os.getenv("PUBLIC_URL", "")
 
-    # ── Base de datos ─────────────────────────────────────────────────────────
+    # URLs internas (MCP, n8n, Vapi tools → FastAPI)
+    SUPERVENDEDOR_URL: str = os.getenv(
+        "SUPERVENDEDOR_URL",
+        os.getenv("FASTAPI_BASE_URL", "http://127.0.0.1:8000"),
+    )
+    FASTAPI_BASE_URL: str = os.getenv("FASTAPI_BASE_URL", "http://127.0.0.1:8000")
+
+    # ── Base de datos CRM ─────────────────────────────────────────────────────
     DB_BACKEND: str = os.getenv("DB_BACKEND", "pocketbase")
     POCKETBASE_URL: str = os.getenv("POCKETBASE_URL", "http://178.105.48.103:8090")
     POCKETBASE_EMAIL: str = os.getenv("POCKETBASE_EMAIL", os.getenv("PB_ADMIN_EMAIL", ""))
     POCKETBASE_PASSWORD: str = os.getenv("POCKETBASE_PASSWORD", os.getenv("PB_ADMIN_PASSWORD", ""))
+    VENTAS_COLLECTION: str = os.getenv("VENTAS_COLLECTION", "ventas")
+    PLANES_CONFIG_COLLECTION: str = os.getenv("PLANES_CONFIG_COLLECTION", "planes_config")
 
     # Supabase (legacy — solo si DB_BACKEND=supabase)
     SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
@@ -35,25 +47,27 @@ class Settings(BaseSettings):
     # Hunter — Google Maps Places API
     GOOGLE_MAPS_API_KEY: str = os.getenv("GOOGLE_MAPS_API_KEY", "")
 
-    # WhatsApp — Evolution API (principal)
+    # WhatsApp — Evolution API (canal principal ED NET PRO 3.0)
     EVOLUTION_API_URL: str = os.getenv("EVOLUTION_API_URL", "")
     EVOLUTION_API_KEY: str = os.getenv("EVOLUTION_API_KEY", "")
     EVOLUTION_INSTANCE: str = os.getenv("EVOLUTION_INSTANCE", "super_vendedor")
 
-    # Vapi webhook secret (opcional)
+    # Vapi — voz + tool-calls
     VAPI_WEBHOOK_SECRET: str = os.getenv("VAPI_WEBHOOK_SECRET", "")
 
     # WhatsApp — Meta Cloud API (alternativo)
     WHATSAPP_TOKEN: str = os.getenv("WHATSAPP_TOKEN", "")
     WHATSAPP_PHONE_ID: str = os.getenv("WHATSAPP_PHONE_ID", "")
 
-    # Single-tenant
-    OWNER_ID: str = os.getenv("OWNER_ID", "edwuar")
+    # Single-tenant (legacy SAAS)
+    # OWNER_ID definido arriba en Core
 
     # Google Calendar
     GOOGLE_CALENDAR_ID: str = os.getenv("GOOGLE_CALENDAR_ID", "primary")
     CALENDAR_TIMEZONE: str = os.getenv("CALENDAR_TIMEZONE", "America/Bogota")
-    PUBLIC_URL: str = os.getenv("PUBLIC_URL", "")
+
+    # Meta Ads (marketing digital)
+    META_ACCESS_TOKEN: str = os.getenv("META_ACCESS_TOKEN", "")
 
     # Avatares — ElevenLabs + Replicate
     ELEVENLABS_API_KEY: str = os.getenv("ELEVENLABS_API_KEY", "")
