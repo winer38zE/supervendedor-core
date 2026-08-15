@@ -94,11 +94,15 @@ def _render_canales_en_vivo() -> None:
     st.subheader("📡 Canales en vivo · WhatsApp & Vapi")
     st.caption("Estado consultado vía FastAPI `/api/v1/metrics/overview` y módulos MCP.")
 
-    refresh = st.button("🔄 Actualizar estado de canales", key="refresh_channels")
-    if refresh:
-        st.cache_data.clear()
+    @st.cache_data(ttl=30, show_spinner="Consultando API ED NET PRO…")
+    def _cached_snapshot() -> dict:
+        return fetch_live_channels_snapshot()
 
-    snapshot = fetch_live_channels_snapshot()
+    if st.button("🔄 Actualizar estado de canales", key="refresh_channels"):
+        _cached_snapshot.clear()
+        st.rerun()
+
+    snapshot = _cached_snapshot()
     show_pb_notice(snapshot.get("notice_level", "none"), snapshot.get("notice_msg", ""))
 
     top1, top2, top3, top4 = st.columns(4)
