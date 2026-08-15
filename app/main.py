@@ -12,13 +12,12 @@ import os
 
 import sentry_sdk
 import uvicorn
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException
 
 from app.config import settings
 from app.core.lifecycle import on_shutdown, on_startup
 from app.core.platform import PLATFORM_NAME, PLATFORM_VERSION
 from app.core.router_registry import register_platform_routers
-from app.security import verify_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -54,23 +53,9 @@ async def shutdown_supervendedor() -> None:
     await on_shutdown()
 
 
-@app.get("/", dependencies=[Depends(verify_api_key)])
+@app.get("/")
 def read_root() -> dict:
-    return {
-        "status": f"SISTEMA {PLATFORM_NAME} EN LINEA",
-        "version": PLATFORM_VERSION,
-        "modo": "single-tenant",
-        "env": settings.ENV,
-        "owner": settings.OWNER_ID,
-        "canales": {
-            "whatsapp": ["/webhook/whatsapp", "/whatsapp/webhook"],
-            "vapi": ["/vapi/webhook", "/vapi/tools/webhook"],
-            "mcp": "servidor_ventas.py (stdio)",
-        },
-        "metricas": "/api/v1/metrics/overview",
-        "arquitectura": "/api/v1/metrics/architecture",
-        "embudo": "Prospecto → Athena → Catalog Bridge → Objection Killer → Hermes → Cita",
-    }
+    return {"status": "ONLINE"}
 
 
 @app.get("/health")
