@@ -7,3 +7,4 @@ pocketbase
 httpx
 python-dotenv
 sentry-sdk
+plotly
