@@ -19,12 +19,7 @@ import httpx
 import streamlit as st
 
 # Prioriza el secret de la nube; si no existe, usa la IP pública de tu VPS
-_DEFAULT_API_URL = "http://178.105.48.103:8000"
-try:
-    API_URL = st.secrets.get("API_URL", os.getenv("API_URL", _DEFAULT_API_URL))
-except Exception:
-    # Sin secrets.toml (desarrollo local): st.secrets lanza StreamlitSecretNotFoundError
-    API_URL = os.getenv("API_URL", _DEFAULT_API_URL)
+API_URL = st.secrets.get("API_URL", os.getenv("API_URL", "http://178.105.48.103:8000"))
 
 NoticeLevel = Literal["info", "warning", "none"]
 
