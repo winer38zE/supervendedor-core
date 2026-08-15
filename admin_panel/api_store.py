@@ -5,7 +5,7 @@ Consulta estado en vivo de FastAPI ED NET PRO 3.0 (webhooks WhatsApp/Vapi, MCP).
 
 Prioridad URL API:
   1. st.secrets["API_URL"] (Streamlit Cloud)
-  2. SUPERVENDEDOR_URL / FASTAPI_BASE_URL (.env local)
+  2. API_URL (.env local)
   3. http://178.105.48.103:8000 (VPS ED NET PRO)
 """
 
@@ -16,32 +16,23 @@ from datetime import datetime, timezone
 from typing import Any, Literal
 
 import httpx
+import streamlit as st
+
+# Prioriza el secret de la nube; si no existe, usa la IP pública de tu VPS
+_DEFAULT_API_URL = "http://178.105.48.103:8000"
+try:
+    API_URL = st.secrets.get("API_URL", os.getenv("API_URL", _DEFAULT_API_URL))
+except Exception:
+    # Sin secrets.toml (desarrollo local): st.secrets lanza StreamlitSecretNotFoundError
+    API_URL = os.getenv("API_URL", _DEFAULT_API_URL)
 
 NoticeLevel = Literal["info", "warning", "none"]
 
 DEFAULT_TIMEOUT = 8.0
-DEFAULT_API_URL = "http://178.105.48.103:8000"
 
 
 def _api_base() -> str:
-    try:
-        import streamlit as st
-
-        secret_url = str(st.secrets.get("API_URL", "")).strip()
-        if secret_url:
-            return secret_url.rstrip("/")
-    except Exception:
-        pass
-
-    env_url = (
-        os.getenv("SUPERVENDEDOR_URL")
-        or os.getenv("FASTAPI_BASE_URL")
-        or ""
-    ).strip()
-    if env_url:
-        return env_url.rstrip("/")
-
-    return DEFAULT_API_URL.rstrip("/")
+    return str(API_URL).rstrip("/")
 
 
 def _public_base() -> str:
