@@ -3,10 +3,10 @@ admin_panel/api_store.py
 ────────────────────────────────────────────────────────────────────────────────
 Consulta estado en vivo de FastAPI ED NET PRO 3.0 (webhooks WhatsApp/Vapi, MCP).
 
-Variables (.env):
-  SUPERVENDEDOR_URL / FASTAPI_BASE_URL  → base FastAPI (default http://127.0.0.1:8000)
-  INTERNAL_API_KEY                      → header X-API-Key si está configurada
-  PUBLIC_URL                            → URLs públicas de webhooks mostradas al usuario
+Prioridad URL API:
+  1. st.secrets["API_URL"] (Streamlit Cloud)
+  2. SUPERVENDEDOR_URL / FASTAPI_BASE_URL (.env local)
+  3. http://178.105.48.103:8000 (VPS ED NET PRO)
 """
 
 from __future__ import annotations
@@ -20,14 +20,28 @@ import httpx
 NoticeLevel = Literal["info", "warning", "none"]
 
 DEFAULT_TIMEOUT = 8.0
+DEFAULT_API_URL = "http://178.105.48.103:8000"
 
 
 def _api_base() -> str:
-    return (
+    try:
+        import streamlit as st
+
+        secret_url = str(st.secrets.get("API_URL", "")).strip()
+        if secret_url:
+            return secret_url.rstrip("/")
+    except Exception:
+        pass
+
+    env_url = (
         os.getenv("SUPERVENDEDOR_URL")
         or os.getenv("FASTAPI_BASE_URL")
-        or "http://127.0.0.1:8000"
-    ).rstrip("/")
+        or ""
+    ).strip()
+    if env_url:
+        return env_url.rstrip("/")
+
+    return DEFAULT_API_URL.rstrip("/")
 
 
 def _public_base() -> str:
