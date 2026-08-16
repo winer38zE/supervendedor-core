@@ -98,10 +98,7 @@ def test_whatsapp_webhook_v2_returns_200():
     assert r.status_code == 200
     body = r.json()
     assert body.get("status") == "ok"
-<<<<<<< HEAD
     assert body.get("queued") is True
-=======
->>>>>>> 5abd626cce5c7c9a25b79377954793361c2622a2
 
 
 def test_vapi_webhook_returns_200():
@@ -135,11 +132,7 @@ def test_vapi_tools_webhook_inventario(monkeypatch):
         return {"ok": False}
 
     monkeypatch.setattr(
-<<<<<<< HEAD
-        "app.services.vapi_tools_service._invoke_backend_tool",
-=======
         "app.services.platform_tools_service.call_tool_sync",
->>>>>>> 5abd626cce5c7c9a25b79377954793361c2622a2
         fake_invoke,
     )
 
@@ -162,10 +155,51 @@ def test_vapi_tools_webhook_inventario(monkeypatch):
     assert len(results) == 1
     assert results[0]["toolCallId"] == "toolu_test_001"
     assert "Enterizo deportivo test" in results[0]["result"]
-<<<<<<< HEAD
     assert "75" in results[0]["result"]
-=======
->>>>>>> 5abd626cce5c7c9a25b79377954793361c2622a2
+
+
+def test_metrics_overview_returns_channels(monkeypatch):
+    async def fake_ventas(**kwargs):
+        return {
+            "ok": True,
+            "total_registros": 2,
+            "ingresos_totales_cop": 500000,
+            "ventas": [],
+        }
+
+    async def fake_catalog(query, **kwargs):
+        return {
+            "ok": True,
+            "productos": [{"titulo": "Enterizo test", "precio_reventa_cop": 75000}],
+            "total_encontrados": 1,
+        }
+
+    async def fake_health():
+        return {
+            "whatsapp_evolution": {
+                "configured": True,
+                "instance": "super_vendedor",
+                "webhooks": ["/webhook/whatsapp"],
+            },
+            "vapi_voice": {
+                "configured": True,
+                "webhooks": ["/vapi/webhook"],
+            },
+            "mcp_servidor_ventas": {"entrypoint": "servidor_ventas.py"},
+        }
+
+    monkeypatch.setattr("app.routers.metrics_router.consultar_ventas_pocketbase", fake_ventas)
+    monkeypatch.setattr("app.routers.metrics_router.buscar_productos_inventario", fake_catalog)
+    monkeypatch.setattr("app.routers.metrics_router._channel_health", fake_health)
+
+    r = client.get("/api/v1/metrics/overview?ventas_limit=5")
+    assert r.status_code == 200
+    data = r.json()
+    assert data.get("ok") is True
+    canales = data.get("canales") or {}
+    assert canales.get("whatsapp_evolution", {}).get("configured") is True
+    assert canales.get("vapi_voice", {}).get("configured") is True
+    assert data.get("ventas", {}).get("total_registros") == 2
 
 
 def test_ads_status_returns_200():
