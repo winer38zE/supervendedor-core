@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "@playwright/test": "^1.62.0",
-    "freebuff": "^0.0.94"
-  }
-}
