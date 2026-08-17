@@ -9,3 +9,6 @@ python-dotenv
 sentry-sdk
 plotly
 pydantic-settings
+sqlalchemy
+pydantic
+
