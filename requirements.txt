@@ -10,5 +10,5 @@ sentry-sdk
 plotly
 pydantic-settings
 sqlalchemy
-pydantic
-
+requests
+dateparser
